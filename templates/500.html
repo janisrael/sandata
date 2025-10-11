@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>500 Server Error — Security Wrecker</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Round">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="error-page">
+      <div class="error-icon">
+        <span class="material-icons-round">error</span>
+      </div>
+      <h1>500</h1>
+      <h2>Internal Server Error</h2>
+      <p>Something went wrong on our end. We're working to fix it!</p>
+      <a href="{{ url_for('index') }}" class="btn-primary">
+        <span class="material-icons-round">home</span>
+        Back to Home
+      </a>
+    </div>
+  </div>
+</body>
+</html>
+

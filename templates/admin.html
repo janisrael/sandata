@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin Panel — Security Wrecker</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Round">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <span class="material-icons-round logo-icon">security</span>
+            <h1>Security Wrecker</h1>
+          </div>
+          <p class="subtitle">Safe, authorized website & payment page security scanning</p>
+      
+      <!-- User Navigation -->
+      <div class="user-nav">
+        <span class="user-welcome">
+          <span class="material-icons-round">account_circle</span>
+          Welcome, <strong>{{ current_user.username }}</strong>
+        </span>
+        <a href="{{ url_for('index') }}" class="btn-nav">
+          <span class="material-icons-round">security</span>
+          Scanner
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn-nav">
+          <span class="material-icons-round">dashboard</span>
+          Dashboard
+        </a>
+        <a href="{{ url_for('admin_panel') }}" class="btn-nav active">
+          <span class="material-icons-round">admin_panel_settings</span>
+          Admin
+        </a>
+        <a href="/security_list" class="btn-nav">
+          <span class="material-icons-round">list_alt</span>
+          Security Audit
+        </a>
+        <a href="{{ url_for('logout') }}" class="btn-nav">
+          <span class="material-icons-round">logout</span>
+          Logout
+        </a>
+      </div>
+    </header>
+
+    <!-- Statistics -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <span class="material-icons-round">people</span>
+        </div>
+        <div class="stat-content">
+          <h3>Total Users</h3>
+          <p class="stat-number">{{ users|length }}</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <span class="material-icons-round">radar</span>
+        </div>
+        <div class="stat-content">
+          <h3>Total Scans</h3>
+          <p class="stat-number">{{ total_scans }}</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
+          <span class="material-icons-round">security</span>
+        </div>
+        <div class="stat-content">
+          <h3>System Status</h3>
+          <p class="stat-number">Active</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users List -->
+    <div class="card">
+      <h2>
+        <span class="material-icons-round">people</span>
+        Registered Users
+      </h2>
+
+      <div class="table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th>Last Login</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td><strong>{{ user.username }}</strong></td>
+              <td>{{ user.email }}</td>
+              <td><span class="badge badge-{{ user.role }}">{{ user.role|capitalize }}</span></td>
+              <td>
+                {% if user.is_active %}
+                <span class="badge badge-success">Active</span>
+                {% else %}
+                <span class="badge badge-error">Inactive</span>
+                {% endif %}
+              </td>
+              <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+              <td>
+                {% if user.last_login %}
+                {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                {% else %}
+                Never
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Scans -->
+    <div class="card">
+      <h2>
+        <span class="material-icons-round">history</span>
+        Recent System Scans
+      </h2>
+
+      <div class="scans-list">
+        {% for scan in recent_scans %}
+        <div class="scan-item">
+          <div class="scan-icon-wrapper">
+            <span class="material-icons-round">
+              {% if scan.scan_type == 'payment' %}payment{% else %}security{% endif %}
+            </span>
+          </div>
+          <div class="scan-details">
+            <h3>{{ scan.target_url }}</h3>
+            <p>
+              <span class="badge badge-{{ scan.scan_type }}">{{ scan.scan_type|capitalize }}</span>
+              <span class="badge badge-{{ scan.status }}">{{ scan.status|capitalize }}</span>
+              {% if scan.score is not none %}
+              <span class="badge badge-score">Score: {{ scan.score }}/100</span>
+              {% endif %}
+              <span class="badge badge-user">{{ scan.user.username if scan.user else 'Anonymous' }}</span>
+            </p>
+            <small>{{ scan.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <span class="material-icons-round footer-icon">verified_user</span>
+          <h3>Security Wrecker</h3>
+        </div>
+        <p class="footer-tagline">Professional security scanning for authorized testing</p>
+        <p class="footer-warning">Always ensure you have explicit permission before scanning any system</p>
+      </div>
+      
+      <div class="footer-divider-main"></div>
+      
+      <div class="footer-bottom">
+        <div class="footer-info">
+          <p class="footer-analyzer">
+            <span class="material-icons-round">analytics</span>
+            <strong>Analyzed By:</strong> Janiz V2.5 | AI Precision Analyst
+          </p>
+        </div>
+        
+        <div class="footer-copyright">
+          <p>&copy; 2025 <strong>Agimat</strong>. All rights reserved.</p>
+          <p class="footer-powered">Powered by <strong>Swordfish Project</strong></p>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
+

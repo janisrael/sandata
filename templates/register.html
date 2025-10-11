@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Register — Security Wrecker</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Round">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <span class="material-icons-round logo-icon">security</span>
+        <h1>Security Wrecker</h1>
+      </div>
+      <p class="subtitle">Create your account</p>
+    </header>
+
+    <!-- Register Card -->
+    <div class="card auth-card">
+      <h2>
+        <span class="material-icons-round">person_add</span>
+        Create New Account
+      </h2>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              <span class="material-icons-round">
+                {% if category == 'error' %}error{% elif category == 'success' %}check_circle{% else %}info{% endif %}
+              </span>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+          <label for="username">
+            <span class="material-icons-round">person</span>
+            Username
+          </label>
+          {{ form.username(class="form-input", placeholder="Choose a username") }}
+          {% if form.username.errors %}
+            <span class="error-message">{{ form.username.errors[0] }}</span>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="email">
+            <span class="material-icons-round">email</span>
+            Email Address
+          </label>
+          {{ form.email(class="form-input", placeholder="your.email@example.com") }}
+          {% if form.email.errors %}
+            <span class="error-message">{{ form.email.errors[0] }}</span>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="password">
+            <span class="material-icons-round">lock</span>
+            Password
+          </label>
+          {{ form.password(class="form-input", placeholder="Min. 6 characters") }}
+          {% if form.password.errors %}
+            <span class="error-message">{{ form.password.errors[0] }}</span>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password">
+            <span class="material-icons-round">lock_open</span>
+            Confirm Password
+          </label>
+          {{ form.confirm_password(class="form-input", placeholder="Re-enter password") }}
+          {% if form.confirm_password.errors %}
+            <span class="error-message">{{ form.confirm_password.errors[0] }}</span>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn-primary">
+          <span class="material-icons-round">person_add</span>
+          Create Account
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="{{ url_for('login') }}" class="auth-link">Login here</a></p>
+        <p><a href="{{ url_for('index') }}" class="auth-link">
+          <span class="material-icons-round">home</span>
+          Back to Home
+        </a></p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-top">
+          <div class="footer-brand">
+            <span class="material-icons-round footer-icon">verified_user</span>
+            <h3>Security Wrecker</h3>
+          </div>
+          <p class="footer-tagline">Professional security scanning for authorized testing</p>
+          <p class="footer-warning">Always ensure you have explicit permission before scanning any system</p>
+        </div>
+        
+        <div class="footer-divider-main"></div>
+        
+        <div class="footer-bottom">
+          <div class="footer-info">
+            <p class="footer-analyzer">
+              <span class="material-icons-round">analytics</span>
+              <strong>Analyzed By:</strong> Janiz V2.5 | AI Precision Analyst
+            </p>
+          </div>
+          
+          <div class="footer-copyright">
+            <p>&copy; 2025 <strong>Agimat</strong>. All rights reserved.</p>
+            <p class="footer-powered">Powered by <strong>Swordfish Project</strong></p>
+          </div>
+        </div>
+      </footer>
+  </div>
+</body>
+</html>
+

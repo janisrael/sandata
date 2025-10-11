@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Security Wrecker — Safe & Authorized Testing</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Round">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <span class="material-icons-round logo-icon">security</span>
+        <h1>Security Wrecker</h1>
+      </div>
+      <p class="subtitle">Safe, authorized website & payment page security scanning</p>
+      
+      <!-- User Navigation -->
+      <div class="user-nav">
+        {% if current_user.is_authenticated %}
+          <span class="user-welcome">
+            <span class="material-icons-round">account_circle</span>
+            Welcome, <strong>{{ current_user.username }}</strong>
+          </span>
+          <a href="{{ url_for('index') }}" class="btn-nav active">
+            <span class="material-icons-round">security</span>
+            Scanner
+          </a>
+          <a href="{{ url_for('dashboard') }}" class="btn-nav">
+            <span class="material-icons-round">dashboard</span>
+            Dashboard
+          </a>
+          {% if current_user.is_admin %}
+          <a href="{{ url_for('admin_panel') }}" class="btn-nav">
+            <span class="material-icons-round">admin_panel_settings</span>
+            Admin
+          </a>
+          {% endif %}
+          <a href="/security_list" class="btn-nav">
+            <span class="material-icons-round">list_alt</span>
+            Security Audit
+          </a>
+          <a href="{{ url_for('logout') }}" class="btn-nav">
+            <span class="material-icons-round">logout</span>
+            Logout
+          </a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="btn-nav">
+            <span class="material-icons-round">login</span>
+            Login
+          </a>
+          <a href="{{ url_for('register') }}" class="btn-nav btn-nav-primary">
+            <span class="material-icons-round">person_add</span>
+            Register
+          </a>
+        {% endif %}
+      </div>
+    </header>
+
+    <!-- Legal Notice -->
+    <div class="notice-card">
+      <span class="material-icons-round notice-icon">gavel</span>
+      <div class="notice-content">
+        <strong>Legal & Ethical Notice:</strong> Use this tool ONLY on systems you own or where you have explicit written permission to test. Unauthorized scanning is illegal and unethical.
+      </div>
+    </div>
+
+    <!-- Scan Controls -->
+    <div class="card scan-card">
+      <h2>
+        <span class="material-icons-round">radar</span>
+        Start Security Scan
+      </h2>
+      
+      <div class="form-group">
+        <label for="target">Target URL</label>
+        <input 
+          id="target" 
+          type="url" 
+          placeholder="https://example.com/checkout" 
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="form-group">
+        <label>Scan Type</label>
+        <div class="scan-type-selector">
+          <button class="scan-type-btn active" data-type="general">
+            <span class="material-icons-round">security</span>
+            <div>
+              <strong>General Scan</strong>
+              <small>Headers, TLS, common vulnerabilities</small>
+            </div>
+          </button>
+          <button class="scan-type-btn" data-type="payment">
+            <span class="material-icons-round">payment</span>
+            <div>
+              <strong>Payment Page Scan</strong>
+              <small>PCI DSS, forms, payment security</small>
+            </div>
+          </button>
+          <button class="scan-type-btn" data-type="advanced">
+            <span class="material-icons-round">science</span>
+            <div>
+              <strong>Advanced Scan</strong>
+              <small>ONLY selected advanced tests (no general checks)</small>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <button id="start-scan" class="btn-primary">
+        <span class="material-icons-round">play_arrow</span>
+        Start Scan
+      </button>
+    </div>
+
+    <!-- Status Card -->
+    <div id="status" class="card status-card hidden">
+      <h3>
+        <span class="material-icons-round scanning">sync</span>
+        Status
+      </h3>
+      <pre id="log"></pre>
+    </div>
+
+    <!-- Report Card -->
+    <div id="report" class="card report-card hidden">
+      <div class="report-header">
+        <h3>
+          <span class="material-icons-round">assessment</span>
+          Security Report
+        </h3>
+        <button id="export-btn" class="btn-secondary">
+          <span class="material-icons-round">download</span>
+          Export JSON
+        </button>
+      </div>
+      <div id="report-content"></div>
+    </div>
+
+    <!-- Recent Scans -->
+    <div class="card history-card">
+      <h3>
+        <span class="material-icons-round">history</span>
+        Recent Scans
+      </h3>
+      <div id="history-list"></div>
+      <button id="load-history" class="btn-secondary">
+        <span class="material-icons-round">refresh</span>
+        Load History
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <span class="material-icons-round footer-icon">verified_user</span>
+          <h3>Security Wrecker</h3>
+        </div>
+        <p class="footer-tagline">Professional security scanning for authorized testing</p>
+        <p class="footer-warning">Always ensure you have explicit permission before scanning any system</p>
+      </div>
+      
+      <div class="footer-divider-main"></div>
+      
+      <div class="footer-bottom">
+        <div class="footer-info">
+          <p class="footer-analyzer">
+            <span class="material-icons-round">analytics</span>
+            <strong>Analyzed By:</strong> Janiz V2.5 | AI Precision Analyst
+          </p>
+        </div>
+        
+        <div class="footer-copyright">
+          <p>&copy; 2025 <strong>Agimat</strong>. All rights reserved.</p>
+          <p class="footer-powered">Powered by <strong>Swordfish Project</strong></p>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
