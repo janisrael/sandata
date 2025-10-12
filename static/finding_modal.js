@@ -123,9 +123,16 @@ function generateDetailedExplanation(finding, targetUrl) {
     
     let whatFound = '', technicalDetails = '', verification = '', whyMatters = '', commands = '';
     
-    // Parse base URL
-    const urlObj = new URL(targetUrl);
-    const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+    // Parse base URL safely
+    let urlObj, baseUrl;
+    try {
+        urlObj = new URL(targetUrl);
+        baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+    } catch (e) {
+        // Fallback for invalid URLs
+        urlObj = { protocol: 'http:', host: targetUrl, hostname: targetUrl };
+        baseUrl = targetUrl;
+    }
     
     // API Discovery findings
     if (findingId.includes('api-discovery')) {
@@ -455,6 +462,249 @@ function generateDetailedExplanation(finding, targetUrl) {
             commands += `aws s3api get-bucket-acl --bucket ${buckets[0].bucket_name}\n`;
             commands += `aws s3api get-public-access-block --bucket ${buckets[0].bucket_name}\n`;
         }
+        commands += '</pre>';
+    }
+    
+    // Payment: HTTPS Enforcement
+    else if (findingId.includes('no-https') || findingId.includes('https-enforcement')) {
+        whatFound = `<p><strong>Payment page is not using HTTPS!</strong></p>`;
+        whatFound += `<p>${detail}</p>`;
+        whatFound += `<p><strong>CRITICAL:</strong> All payment pages MUST use HTTPS for PCI DSS compliance.</p>`;
+        
+        technicalDetails = '<p>The page is accessed over <strong>HTTP (unencrypted)</strong> instead of HTTPS:</p>';
+        technicalDetails += '<ul>';
+        technicalDetails += '<li><strong>Protocol:</strong> HTTP (port 80)</li>';
+        technicalDetails += '<li><strong>Encryption:</strong> None - data transmitted in plain text</li>';
+        technicalDetails += '<li><strong>PCI DSS Requirement:</strong> Requirement 4.1 - Use strong cryptography</li>';
+        technicalDetails += '</ul>';
+        
+        verification = '<ol>';
+        verification += '<li><strong>Check the URL bar</strong> - Look for the lock icon</li>';
+        verification += '<li><strong>If the URL starts with "http://" (not "https://"), it is unencrypted</strong></li>';
+        verification += `<li>Try accessing: <code>https://${urlObj.host}</code></li>`;
+        verification += '<li><strong>Use SSL Labs to test:</strong> <a href="https://www.ssllabs.com/ssltest/" target="_blank">https://www.ssllabs.com/ssltest/</a></li>';
+        verification += '</ol>';
+        
+        whyMatters = '<ul>';
+        whyMatters += '<li><strong>Credit Card Data Exposure:</strong> Card numbers, CVV, and personal data transmitted in plain text</li>';
+        whyMatters += '<li><strong>Man-in-the-Middle Attacks:</strong> Attackers can intercept and steal payment information</li>';
+        whyMatters += '<li><strong>PCI DSS Violation:</strong> Instant failure of PCI DSS Requirement 4.1</li>';
+        whyMatters += '<li><strong>Customer Trust:</strong> Browsers show "Not Secure" warning, scaring away customers</li>';
+        whyMatters += '<li><strong>Legal Liability:</strong> You are liable for data breaches due to lack of encryption</li>';
+        whyMatters += '</ul>';
+        
+        commands = '<p><strong>Test with curl:</strong></p><pre>';
+        commands += `# Check if HTTPS is available:\n`;
+        commands += `curl -I https://${urlObj.host}\n\n`;
+        commands += `# Check for HSTS header (forces HTTPS):\n`;
+        commands += `curl -I https://${urlObj.host} | grep -i "strict-transport-security"\n\n`;
+        commands += `# SSL/TLS test with openssl:\n`;
+        commands += `openssl s_client -connect ${urlObj.host}:443 -servername ${urlObj.host}\n`;
+        commands += '</pre>';
+    }
+    
+    // Payment: Missing CSRF Token
+    else if (findingId.includes('csrf')) {
+        whatFound = `<p><strong>Payment form is missing CSRF protection!</strong></p>`;
+        whatFound += `<p>${detail}</p>`;
+        whatFound += `<p><strong>HIGH RISK:</strong> Attackers can trick users into submitting unauthorized payments.</p>`;
+        
+        technicalDetails = '<p>Cross-Site Request Forgery (CSRF) allows attackers to:</p>';
+        technicalDetails += '<ul>';
+        technicalDetails += '<li>Submit forms on behalf of logged-in users without their knowledge</li>';
+        technicalDetails += '<li>Change payment details, shipping addresses, or order quantities</li>';
+        technicalDetails += '<li>Execute unauthorized transactions</li>';
+        technicalDetails += '</ul>';
+        technicalDetails += `<p><strong>No CSRF token found in the payment form!</strong></p>`;
+        
+        verification = '<ol>';
+        verification += '<li><strong>View page source</strong> (right-click → View Page Source)</li>';
+        verification += '<li><strong>Search for "csrf" or "token"</strong> in the HTML</li>';
+        verification += '<li><strong>Check for hidden input fields</strong> like: <code>&lt;input type="hidden" name="csrf_token" value="..."&gt;</code></li>';
+        verification += '<li><strong>If no token is found, CSRF protection is missing!</strong></li>';
+        verification += '</ol>';
+        
+        whyMatters = '<ul>';
+        whyMatters += '<li><strong>Unauthorized Transactions:</strong> Attacker can force users to make unwanted purchases</li>';
+        whyMatters += '<li><strong>Account Takeover:</strong> Change email, password, or payment methods</li>';
+        whyMatters += '<li><strong>Financial Fraud:</strong> Submit payments to attacker-controlled accounts</li>';
+        whyMatters += '<li><strong>OWASP Top 10:</strong> CSRF is a recognized critical web vulnerability</li>';
+        whyMatters += '<li><strong>PCI DSS 6.5.9:</strong> Protect against CSRF attacks</li>';
+        whyMatters += '</ul>';
+        
+        commands = '<p><strong>Test CSRF vulnerability:</strong></p><pre>';
+        commands += `# Inspect the form HTML:\n`;
+        commands += `curl -s "${targetUrl}" | grep -i "csrf\\|token\\|form"\n\n`;
+        commands += `# Check for anti-CSRF headers:\n`;
+        commands += `curl -I "${targetUrl}" | grep -i "x-csrf-token\\|x-xsrf-token"\n`;
+        commands += '</pre>';
+        commands += '<p><strong>WARNING: DO NOT attempt CSRF attacks without authorization!</strong></p>';
+    }
+    
+    // Payment: Missing Security Headers
+    else if (findingId.includes('security-headers') || findingId.includes('pci-security-headers')) {
+        whatFound = `<p><strong>Missing critical security headers!</strong></p>`;
+        whatFound += `<p>${detail}</p>`;
+        
+        technicalDetails = '<p><strong>Security headers protect against common attacks:</strong></p>';
+        technicalDetails += '<ul>';
+        technicalDetails += '<li><strong>Content-Security-Policy (CSP):</strong> Prevents XSS attacks by controlling script sources</li>';
+        technicalDetails += '<li><strong>X-Content-Type-Options:</strong> Prevents MIME type sniffing attacks</li>';
+        technicalDetails += '<li><strong>X-Frame-Options:</strong> Prevents clickjacking attacks</li>';
+        technicalDetails += '<li><strong>Strict-Transport-Security (HSTS):</strong> Forces HTTPS connections</li>';
+        technicalDetails += '<li><strong>Referrer-Policy:</strong> Controls referrer information leakage</li>';
+        technicalDetails += '</ul>';
+        
+        verification = '<ol>';
+        verification += '<li><strong>Open browser DevTools</strong> (F12)</li>';
+        verification += '<li><strong>Go to Network tab</strong></li>';
+        verification += '<li><strong>Reload the page</strong></li>';
+        verification += '<li><strong>Click on the main document request</strong></li>';
+        verification += '<li><strong>Check Response Headers</strong> for the missing headers listed above</li>';
+        verification += '<li><strong>Use online tool:</strong> <a href="https://securityheaders.com" target="_blank">https://securityheaders.com</a></li>';
+        verification += '</ol>';
+        
+        whyMatters = '<ul>';
+        whyMatters += '<li><strong>XSS Attacks:</strong> Missing CSP allows attackers to inject malicious scripts</li>';
+        whyMatters += '<li><strong>Clickjacking:</strong> Missing X-Frame-Options allows embedding in malicious iframes</li>';
+        whyMatters += '<li><strong>Protocol Downgrade:</strong> Missing HSTS allows man-in-the-middle attacks</li>';
+        whyMatters += '<li><strong>PCI DSS Compliance:</strong> Security headers are part of secure coding practices (Req 6.5)</li>';
+        whyMatters += '<li><strong>Defense in Depth:</strong> Multiple layers of security reduce attack success rate</li>';
+        whyMatters += '</ul>';
+        
+        commands = '<p><strong>Check security headers with curl:</strong></p><pre>';
+        commands += `# Check all response headers:\n`;
+        commands += `curl -I "${targetUrl}"\n\n`;
+        commands += `# Check specific security headers:\n`;
+        commands += `curl -I "${targetUrl}" | grep -i "content-security-policy\\|x-frame-options\\|strict-transport\\|x-content-type"\n\n`;
+        commands += `# Use securityheaders.com API:\n`;
+        commands += `curl -s "https://securityheaders.com/?q=${encodeURIComponent(targetUrl)}&followRedirects=on"\n`;
+        commands += '</pre>';
+    }
+    
+    // Payment: Insecure Cookies
+    else if (findingId.includes('insecure-cookies') || findingId.includes('cookie')) {
+        whatFound = `<p><strong>Cookies are configured insecurely!</strong></p>`;
+        whatFound += `<p>${detail}</p>`;
+        
+        technicalDetails = '<p><strong>Cookie security flags protect session data:</strong></p>';
+        technicalDetails += '<ul>';
+        technicalDetails += '<li><strong>Secure flag:</strong> Ensures cookie is only sent over HTTPS</li>';
+        technicalDetails += '<li><strong>HttpOnly flag:</strong> Prevents JavaScript from accessing the cookie (XSS protection)</li>';
+        technicalDetails += '<li><strong>SameSite attribute:</strong> Prevents CSRF attacks by controlling cross-site cookie sending</li>';
+        technicalDetails += '</ul>';
+        technicalDetails += `<p>${detail}</p>`;
+        
+        verification = '<ol>';
+        verification += '<li><strong>Open browser DevTools</strong> (F12)</li>';
+        verification += '<li><strong>Go to Application tab</strong> (Chrome) or Storage tab (Firefox)</li>';
+        verification += '<li><strong>Expand Cookies</strong> in the left sidebar</li>';
+        verification += '<li><strong>Check each cookie\'s flags:</strong></li>';
+        verification += '<ul>';
+        verification += '<li>Secure should be checked</li>';
+        verification += '<li>HttpOnly should be checked</li>';
+        verification += '<li>SameSite should be "Strict" or "Lax"</li>';
+        verification += '</ul>';
+        verification += '</ol>';
+        
+        whyMatters = '<ul>';
+        whyMatters += '<li><strong>Session Hijacking:</strong> Missing Secure flag allows cookie theft over HTTP</li>';
+        whyMatters += '<li><strong>XSS Cookie Theft:</strong> Missing HttpOnly allows JavaScript to steal session cookies</li>';
+        whyMatters += '<li><strong>CSRF Attacks:</strong> Missing/weak SameSite allows cross-site request attacks</li>';
+        whyMatters += '<li><strong>PCI DSS 4.1:</strong> Protect cardholder data during transmission</li>';
+        whyMatters += '<li><strong>Account Takeover:</strong> Stolen session cookies = full account access</li>';
+        whyMatters += '</ul>';
+        
+        commands = '<p><strong>Check cookie attributes with curl:</strong></p><pre>';
+        commands += `# Check Set-Cookie headers:\n`;
+        commands += `curl -I "${targetUrl}" | grep -i "set-cookie"\n\n`;
+        commands += `# Verbose cookie information:\n`;
+        commands += `curl -v "${targetUrl}" 2>&1 | grep -i "cookie"\n`;
+        commands += '</pre>';
+    }
+    
+    // Payment: Direct Credit Card Input
+    else if (findingId.includes('direct-card-input') || findingId.includes('credit-card') || findingId.includes('card-field')) {
+        whatFound = `<p><strong>Direct credit card input detected!</strong></p>`;
+        whatFound += `<p>${detail}</p>`;
+        whatFound += `<p><strong>PCI DSS CONCERN:</strong> Direct card handling increases compliance scope.</p>`;
+        
+        technicalDetails = '<p><strong>Why direct credit card fields are risky:</strong></p>';
+        technicalDetails += '<ul>';
+        technicalDetails += '<li><strong>PCI DSS Scope:</strong> Your server handles raw card data = full PCI DSS compliance required</li>';
+        technicalDetails += '<li><strong>Data Breach Risk:</strong> If hacked, attackers steal actual credit card numbers</li>';
+        technicalDetails += '<li><strong>Liability:</strong> You are responsible for securing and storing card data</li>';
+        technicalDetails += '<li><strong>Better Alternative:</strong> Use tokenized payment gateways (Stripe, PayPal, Square)</li>';
+        technicalDetails += '</ul>';
+        
+        verification = '<ol>';
+        verification += '<li><strong>View page source</strong></li>';
+        verification += '<li><strong>Search for input fields with card-related names:</strong></li>';
+        verification += '<ul>';
+        verification += '<li><code>card_number</code>, <code>cardnumber</code>, <code>cc_number</code></li>';
+        verification += '<li><code>cvv</code>, <code>cvc</code>, <code>security_code</code></li>';
+        verification += '<li><code>expiry</code>, <code>exp_date</code></li>';
+        verification += '</ul>';
+        verification += '<li><strong>If these fields POST directly to your server, you handle raw card data!</strong></li>';
+        verification += '</ol>';
+        
+        whyMatters = '<ul>';
+        whyMatters += '<li><strong>PCI DSS Level:</strong> Direct card handling = Level 1 compliance (most expensive)</li>';
+        whyMatters += '<li><strong>Annual Audits:</strong> Required security audits cost $50,000+</li>';
+        whyMatters += '<li><strong>Data Breach Fines:</strong> $5,000 - $100,000 per month for non-compliance</li>';
+        whyMatters += '<li><strong>Card Brand Penalties:</strong> Visa/Mastercard can revoke your ability to process cards</li>';
+        whyMatters += '<li><strong>Reputation Damage:</strong> Breaches destroy customer trust</li>';
+        whyMatters += '</ul>';
+        
+        commands = '<p><strong>Inspect form fields:</strong></p><pre>';
+        commands += `# Check for credit card input fields:\n`;
+        commands += `curl -s "${targetUrl}" | grep -i 'card\\|cvv\\|cvc\\|expir' | grep -i 'input\\|name='\n\n`;
+        commands += `# Check form action (where does it submit?):\n`;
+        commands += `curl -s "${targetUrl}" | grep -i '<form' | grep -i 'action='\n`;
+        commands += '</pre>';
+        commands += '<p><strong>Recommendation:</strong> Use Stripe.js, PayPal SDK, or Square for tokenized payments!</p>';
+    }
+    
+    // Payment: Mixed Content
+    else if (findingId.includes('mixed-content')) {
+        whatFound = `<p><strong>Mixed content detected - HTTP resources on HTTPS page!</strong></p>`;
+        whatFound += `<p>${detail}</p>`;
+        
+        technicalDetails = '<p><strong>Mixed content compromises HTTPS security:</strong></p>';
+        technicalDetails += '<ul>';
+        technicalDetails += '<li><strong>Active Mixed Content:</strong> Scripts, stylesheets, iframes loaded over HTTP</li>';
+        technicalDetails += '<li><strong>Passive Mixed Content:</strong> Images, videos loaded over HTTP</li>';
+        technicalDetails += '<li><strong>Security Risk:</strong> HTTP resources can be modified by attackers (MITM)</li>';
+        technicalDetails += '<li><strong>Browser Warnings:</strong> Browsers show "Not Secure" or block mixed content</li>';
+        technicalDetails += '</ul>';
+        technicalDetails += `<p>${detail}</p>`;
+        
+        verification = '<ol>';
+        verification += '<li><strong>Open browser DevTools</strong> (F12)</li>';
+        verification += '<li><strong>Check Console tab</strong> for mixed content warnings</li>';
+        verification += '<li><strong>Look for messages like:</strong></li>';
+        verification += '<ul>';
+        verification += '<li>"Mixed Content: The page was loaded over HTTPS, but requested an insecure resource"</li>';
+        verification += '<li>"This request has been blocked; the content must be served over HTTPS"</li>';
+        verification += '</ul>';
+        verification += '<li><strong>View page source</strong> and search for <code>http://</code> (not <code>https://</code>)</li>';
+        verification += '</ol>';
+        
+        whyMatters = '<ul>';
+        whyMatters += '<li><strong>Man-in-the-Middle Attacks:</strong> HTTP resources can inject malicious code</li>';
+        whyMatters += '<li><strong>Payment Data Theft:</strong> Modified scripts can steal credit card information</li>';
+        whyMatters += '<li><strong>False Security:</strong> Users see HTTPS lock, but page is actually vulnerable</li>';
+        whyMatters += '<li><strong>PCI DSS 4.1:</strong> All resources must use strong encryption</li>';
+        whyMatters += '<li><strong>Browser Blocking:</strong> Modern browsers block active mixed content by default</li>';
+        whyMatters += '</ul>';
+        
+        commands = '<p><strong>Find mixed content:</strong></p><pre>';
+        commands += `# Download page and search for HTTP resources:\n`;
+        commands += `curl -s "${targetUrl}" | grep -i 'http://' | grep -v 'https://'\n\n`;
+        commands += `# Check for insecure scripts specifically:\n`;
+        commands += `curl -s "${targetUrl}" | grep -i '<script' | grep -i 'http://'\n\n`;
+        commands += `# Check for insecure stylesheets:\n`;
+        commands += `curl -s "${targetUrl}" | grep -i '<link' | grep -i 'http://'\n`;
         commands += '</pre>';
     }
     
