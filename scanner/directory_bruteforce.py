@@ -48,6 +48,7 @@ def bruteforce_directories(target_url, timeout=30):
     # Start bruteforcing
     start_time = time.time()
     tested_count = 0
+    waf_filtered_count = 0
     
     for path in wordlist:
         # Check timeout
@@ -76,12 +77,19 @@ def bruteforce_directories(target_url, timeout=30):
             
             # Check if path exists (200, 201, 204, 301, 302, 401, 403)
             if status_code in [200, 201, 204, 301, 302, 401, 403]:
-                discovered_paths.append({
-                    'path': path,
-                    'full_url': full_url,
-                    'status_code': status_code,
-                    'content_length': response.headers.get('Content-Length', 'Unknown')
-                })
+                # Verify if this is a real finding or WAF false positive
+                is_waf_block = _is_waf_false_positive(response, status_code)
+                
+                if is_waf_block:
+                    waf_filtered_count += 1
+                else:
+                    discovered_paths.append({
+                        'path': path,
+                        'full_url': full_url,
+                        'status_code': status_code,
+                        'content_length': response.headers.get('Content-Length', 'Unknown'),
+                        'server': response.headers.get('Server', 'Unknown')
+                    })
         
         except RequestException:
             # Path doesn't exist or timed out, continue
@@ -137,29 +145,38 @@ def bruteforce_directories(target_url, timeout=30):
         
         for path_info in discovered_paths:
             path = path_info['path'].lower()
+            status_code = path_info['status_code']
             severity = 'info'
             
-            # Determine severity
+            # Determine base severity from path pattern
             for pattern, level in sensitive_patterns.items():
                 if pattern in path:
                     severity = level
                     break
             
-            # Also check status code
-            if path_info['status_code'] == 403:
-                path_info['note'] = 'Exists but forbidden'
-            elif path_info['status_code'] == 401:
-                path_info['note'] = 'Requires authentication'
-            elif path_info['status_code'] in [301, 302]:
-                path_info['note'] = 'Redirects'
+            # Check status code and adjust severity
+            # Only flag as critical/high/medium if ACTUALLY ACCESSIBLE (200-series)
+            if status_code == 403:
+                path_info['note'] = '✅ Properly blocked (403 Forbidden)'
+                severity = 'info'  # Downgrade to info - this is GOOD security
+            elif status_code == 401:
+                path_info['note'] = '✅ Requires authentication (401 Unauthorized)'
+                severity = 'info'  # Downgrade to info - this is GOOD security
+            elif status_code in [301, 302]:
+                path_info['note'] = 'Redirects - verify destination'
+                # Keep original severity for redirects (might still be accessible)
+            elif status_code in [200, 201, 204]:
+                path_info['note'] = '🔴 EXPOSED AND ACCESSIBLE!'
+                # Keep original severity - this is the real issue
             else:
-                path_info['note'] = 'Accessible'
+                path_info['note'] = f'Returned HTTP {status_code}'
             
-            if severity == 'critical':
+            # Categorize based on final severity
+            if severity == 'critical' and status_code in [200, 201, 204]:
                 critical_paths.append(path_info)
-            elif severity == 'high':
+            elif severity == 'high' and status_code in [200, 201, 204, 301, 302]:
                 high_risk_paths.append(path_info)
-            elif severity == 'medium':
+            elif severity == 'medium' and status_code in [200, 201, 204, 301, 302]:
                 medium_risk_paths.append(path_info)
             else:
                 info_paths.append(path_info)
@@ -256,21 +273,25 @@ def bruteforce_directories(target_url, timeout=30):
             })
         
         # Summary finding
+        waf_note = f' (Filtered {waf_filtered_count} WAF false positives)' if waf_filtered_count > 0 else ''
         findings.append({
             'id': 'dirbrute-results',
-            'title': f'✓ Directory Bruteforce Complete: {len(discovered_paths)} Paths Found',
+            'title': f'✓ Directory Bruteforce Complete: {len(discovered_paths)} Real Paths Found',
             'severity': 'info',
-            'detail': f'Tested {tested_count} common paths on {base_url}. Found {len(discovered_paths)} accessible paths. Critical: {len(critical_paths)}, High: {len(high_risk_paths)}, Medium: {len(medium_risk_paths)}, Info: {len(info_paths)}',
+            'detail': f'Tested {tested_count} common paths on {base_url}. Found {len(discovered_paths)} accessible paths{waf_note}. Critical: {len(critical_paths)}, High: {len(high_risk_paths)}, Medium: {len(medium_risk_paths)}, Info: {len(info_paths)}',
             'type': 'Directory Bruteforcing',
-            'all_paths': discovered_paths
+            'all_paths': discovered_paths,
+            'waf_filtered': waf_filtered_count
         })
     else:
+        waf_note = f' (Filtered {waf_filtered_count} WAF false positives - Good!)' if waf_filtered_count > 0 else ''
         findings.append({
             'id': 'dirbrute-no-paths',
-            'title': 'No Additional Paths Found',
+            'title': '✅ No Exposed Paths Found - Well Secured!',
             'severity': 'info',
-            'detail': f'Directory bruteforce completed on {base_url}. No common sensitive paths were discovered. Tested {tested_count} paths.',
-            'type': 'Directory Bruteforcing'
+            'detail': f'Directory bruteforce completed on {base_url}. No common sensitive paths were discovered{waf_note}. Tested {tested_count} paths. Your WAF/server configuration is effectively blocking malicious requests.',
+            'type': 'Directory Bruteforcing',
+            'waf_filtered': waf_filtered_count
         })
     
     return {
@@ -278,6 +299,77 @@ def bruteforce_directories(target_url, timeout=30):
         'discovered_paths': discovered_paths,
         'total_found': len(discovered_paths)
     }
+
+
+def _is_waf_false_positive(response, status_code):
+    """
+    Detect if a 403/401 response is a WAF false positive
+    
+    Args:
+        response: The HTTP response object
+        status_code: The HTTP status code
+        
+    Returns:
+        bool: True if this is likely a WAF false positive, False if it's a real finding
+    """
+    # Only check for false positives on 403/401 responses
+    if status_code not in [403, 401]:
+        return False
+    
+    headers = {k.lower(): v for k, v in response.headers.items()}
+    
+    # Cloudflare WAF indicators
+    if 'cf-ray' in headers or 'cloudflare' in headers.get('server', '').lower():
+        content_length = headers.get('content-length', '0')
+        
+        # Cloudflare often returns small HTML error pages (< 2KB) for blocked requests
+        # Real file blocks usually have different sizes
+        try:
+            cl_int = int(content_length)
+            if cl_int == 0:
+                # 0 bytes = file doesn't exist, WAF is just blocking pattern
+                return True
+            elif cl_int > 0 and cl_int < 2048:
+                # Small response (< 2KB) = likely WAF block page
+                return True
+            elif cl_int > 5000:
+                # Large response (>5KB) = likely real file or real error page from app
+                return False
+            else:
+                # 2KB-5KB range = check content-type as tiebreaker
+                if 'text/html' in headers.get('content-type', ''):
+                    # HTML in medium size range = likely WAF error page
+                    return True
+        except (ValueError, TypeError):
+            # If we can't parse content-length, assume WAF block
+            return True
+    
+    # AWS WAF indicators
+    if 'x-amzn-requestid' in headers or 'x-amzn-errortype' in headers:
+        return True
+    
+    # Generic WAF patterns
+    waf_servers = ['cloudflare', 'akamai', 'cloudfront', 'incapsula', 'sucuri']
+    server_header = headers.get('server', '').lower()
+    
+    for waf in waf_servers:
+        if waf in server_header:
+            # If it's a WAF server and returns 403, it might be a pattern block
+            # Only trust it if there's a substantial content-length (real file)
+            content_length = headers.get('content-length', '0')
+            try:
+                if int(content_length) == 0 or int(content_length) > 5000:
+                    # 0 bytes = likely doesn't exist
+                    # >5KB = likely real error page from app, not WAF
+                    return False
+                else:
+                    # Small response from WAF = likely false positive
+                    return True
+            except (ValueError, TypeError):
+                return True
+    
+    # If we get here, assume it's a real finding
+    return False
 
 
 def _get_common_wordlist():
