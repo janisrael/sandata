@@ -60,11 +60,14 @@ def enumerate_subdomains(target_url, timeout=10):
     # Remove duplicates and sort
     discovered_subdomains = sorted(list(set(discovered_subdomains)))
     
-    # Verify subdomains (check if they resolve)
+    # Verify subdomains (check if they resolve) and get IPs
     verified_subdomains = []
+    subdomain_details = {}  # Store subdomain -> IP mapping
     for subdomain in discovered_subdomains[:50]:  # Limit to first 50 to avoid too many DNS queries
-        if _verify_subdomain(subdomain):
+        ip = _verify_subdomain(subdomain)
+        if ip:
             verified_subdomains.append(subdomain)
+            subdomain_details[subdomain] = ip
     
     # Generate findings
     if verified_subdomains:
@@ -89,17 +92,25 @@ def enumerate_subdomains(target_url, timeout=10):
             subdomain_name = subdomain.split('.')[0].lower()
             for pattern, description in sensitive_patterns.items():
                 if pattern in subdomain_name:
-                    sensitive_found.append(f'{subdomain} ({description})')
+                    ip = subdomain_details.get(subdomain, 'Unknown')
+                    sensitive_found.append((subdomain, description, ip))
                     break
         
         if sensitive_found:
+            # Build detailed findings list
+            subdomain_list = []
+            for subdomain, description, ip in sensitive_found[:10]:
+                subdomain_list.append(f"\n  • {subdomain} → {ip} ({description})")
+            if len(sensitive_found) > 10:
+                subdomain_list.append(f"\n  ... and {len(sensitive_found) - 10} more")
+            
             findings.append({
                 'id': 'subdomain-sensitive-exposed',
                 'title': f'⚠️ Potentially Sensitive Subdomains Found: {len(sensitive_found)}',
                 'severity': 'medium',
-                'detail': f'Found {len(sensitive_found)} subdomains that may expose sensitive systems: {", ".join(sensitive_found[:5])}{"..." if len(sensitive_found) > 5 else ""}. These subdomains could be targets for attackers.',
+                'detail': f'Found {len(sensitive_found)} subdomains that may expose sensitive systems:{"".join(subdomain_list)}',
                 'type': 'Subdomain Enumeration',
-                'subdomains': sensitive_found,
+                'subdomains': [f"{s[0]} ({s[1]})" for s in sensitive_found],  # For backwards compatibility
                 'recommendations': [
                     'Review access controls on all discovered subdomains',
                     'Ensure dev/test/staging environments are not publicly accessible',
@@ -112,11 +123,18 @@ def enumerate_subdomains(target_url, timeout=10):
             })
         
         # Report all discovered subdomains
+        subdomain_list = []
+        for subdomain in verified_subdomains[:15]:
+            ip = subdomain_details.get(subdomain, 'Unknown')
+            subdomain_list.append(f"\n  • {subdomain} → {ip}")
+        if len(verified_subdomains) > 15:
+            subdomain_list.append(f"\n  ... and {len(verified_subdomains) - 15} more")
+        
         findings.append({
             'id': 'subdomain-enum-results',
             'title': f'✓ Subdomains Discovered: {len(verified_subdomains)}',
             'severity': 'info',
-            'detail': f'Found {len(verified_subdomains)} active subdomains for {root_domain}. Subdomains: {", ".join(verified_subdomains[:10])}{"..." if len(verified_subdomains) > 10 else ""}',
+            'detail': f'Found {len(verified_subdomains)} active subdomains for {root_domain}:{"".join(subdomain_list)}',
             'type': 'Subdomain Enumeration',
             'subdomains': verified_subdomains,
             'recommendations': [
@@ -196,15 +214,15 @@ def _check_common_subdomains(domain, timeout):
 
 
 def _verify_subdomain(subdomain):
-    """Verify if a subdomain resolves via DNS"""
+    """Verify if a subdomain resolves via DNS and return its IP"""
     try:
         # Try to resolve the subdomain
-        socket.gethostbyname(subdomain)
-        return True
+        ip = socket.gethostbyname(subdomain)
+        return ip
     except socket.gaierror:
-        return False
+        return None
     except Exception:
-        return False
+        return None
 
 
 def get_subdomain_recommendations(finding_id):

@@ -166,11 +166,19 @@ def bruteforce_directories(target_url, timeout=30):
         
         # Generate findings
         if critical_paths:
+            # Build detailed findings list
+            path_details = []
+            for p in critical_paths:
+                size_info = f" ({p.get('size', 0)} bytes)" if p.get('size') else ""
+                path_details.append(
+                    f"\n  • {p['full_url']} (HTTP {p['status_code']}){size_info} - {p.get('note', 'CRITICAL EXPOSURE!')}"
+                )
+            
             findings.append({
                 'id': 'dirbrute-critical-paths',
                 'title': f'🔴 CRITICAL: Sensitive Files/Directories Exposed - {len(critical_paths)} Found',
                 'severity': 'critical',
-                'detail': f'Found {len(critical_paths)} critical paths that expose sensitive information or configuration: {", ".join([p["path"] for p in critical_paths[:5]])}{"..." if len(critical_paths) > 5 else ""}',
+                'detail': f'Found {len(critical_paths)} critical paths that expose sensitive information or configuration:{"".join(path_details)}',
                 'type': 'Directory Bruteforcing',
                 'paths': critical_paths,
                 'recommendations': [
@@ -188,11 +196,21 @@ def bruteforce_directories(target_url, timeout=30):
             })
         
         if high_risk_paths:
+            # Build detailed findings list
+            path_details = []
+            for p in high_risk_paths[:10]:  # Show up to 10
+                size_info = f" ({p.get('size', 0)} bytes)" if p.get('size') else ""
+                path_details.append(
+                    f"\n  • {p['full_url']} (HTTP {p['status_code']}){size_info} - {p.get('note', 'Admin/sensitive path')}"
+                )
+            if len(high_risk_paths) > 10:
+                path_details.append(f"\n  ... and {len(high_risk_paths) - 10} more")
+            
             findings.append({
                 'id': 'dirbrute-high-risk-paths',
                 'title': f'⚠️ HIGH RISK: Admin/Sensitive Paths Discovered - {len(high_risk_paths)} Found',
                 'severity': 'high',
-                'detail': f'Found {len(high_risk_paths)} admin or sensitive paths: {", ".join([p["path"] for p in high_risk_paths[:5]])}{"..." if len(high_risk_paths) > 5 else ""}',
+                'detail': f'Found {len(high_risk_paths)} admin or sensitive paths:{"".join(path_details)}',
                 'type': 'Directory Bruteforcing',
                 'paths': high_risk_paths,
                 'recommendations': [
@@ -210,11 +228,21 @@ def bruteforce_directories(target_url, timeout=30):
             })
         
         if medium_risk_paths:
+            # Build detailed findings list
+            path_details = []
+            for p in medium_risk_paths[:10]:  # Show up to 10
+                size_info = f" ({p.get('size', 0)} bytes)" if p.get('size') else ""
+                path_details.append(
+                    f"\n  • {p['full_url']} (HTTP {p['status_code']}){size_info} - {p.get('note', 'May leak information')}"
+                )
+            if len(medium_risk_paths) > 10:
+                path_details.append(f"\n  ... and {len(medium_risk_paths) - 10} more")
+            
             findings.append({
                 'id': 'dirbrute-medium-risk-paths',
                 'title': f'⚠️ Information Disclosure Paths - {len(medium_risk_paths)} Found',
                 'severity': 'medium',
-                'detail': f'Found {len(medium_risk_paths)} paths that may leak information: {", ".join([p["path"] for p in medium_risk_paths[:5]])}{"..." if len(medium_risk_paths) > 5 else ""}',
+                'detail': f'Found {len(medium_risk_paths)} paths that may leak information:{"".join(path_details)}',
                 'type': 'Directory Bruteforcing',
                 'paths': medium_risk_paths,
                 'recommendations': [
