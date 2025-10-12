@@ -333,12 +333,15 @@ function displayReport(result) {
             
             const hasRecommendations = finding.recommendations && finding.recommendations.length > 0;
             
+            // Store finding data for modal
+            li.dataset.finding = JSON.stringify(finding);
+            
             li.innerHTML = `
                 <div>
                     <span class="severity-badge ${finding.severity}">${finding.severity}</span>
                     <span class="finding-title">${finding.title}</span>
                 </div>
-                <div class="finding-detail">${finding.detail}</div>
+                <div class="finding-detail" data-finding-idx="${findingIdx}">${finding.detail}</div>
                 ${hasRecommendations ? `
                     <div class="recommendations-accordion">
                         <button class="accordion-toggle" data-finding-idx="${findingIdx}">
@@ -361,6 +364,17 @@ function displayReport(result) {
         });
         
         findingsSection.appendChild(findingsList);
+        
+        // Add click handlers for finding details modal
+        const findingDetails = findingsSection.querySelectorAll('.finding-detail');
+        findingDetails.forEach((detailDiv) => {
+            detailDiv.addEventListener('click', function() {
+                const findingItem = this.closest('.finding-item');
+                const findingData = JSON.parse(findingItem.dataset.finding);
+                const targetUrl = result.target || '';
+                openFindingModal(findingData, targetUrl);
+            });
+        });
     } else {
         findingsSection.innerHTML = `
             <h4><span class="material-icons-round">check_circle</span> Findings</h4>

@@ -1,0 +1,63 @@
+<!-- Finding Detail Modal -->
+<div id="findingModal" class="modal hidden">
+  <div class="modal-overlay" onclick="closeFindingModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">Finding Details</h2>
+      <button class="modal-close" onclick="closeFindingModal()">
+        <span class="material-icons-round">close</span>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <!-- Severity Badge -->
+      <div id="modalSeverity" class="severity-badge"></div>
+      
+      <!-- What Was Found -->
+      <div class="modal-section">
+        <h3><span class="material-icons-round">search</span> What Was Found</h3>
+        <div id="modalWhatFound" class="modal-content-box"></div>
+      </div>
+      
+      <!-- Technical Details -->
+      <div class="modal-section">
+        <h3><span class="material-icons-round">code</span> Technical Details</h3>
+        <div id="modalTechnicalDetails" class="modal-content-box"></div>
+      </div>
+      
+      <!-- How to Verify -->
+      <div class="modal-section">
+        <h3><span class="material-icons-round">fact_check</span> How to Verify This Finding</h3>
+        <div id="modalVerification" class="modal-content-box"></div>
+      </div>
+      
+      <!-- Why This Matters -->
+      <div class="modal-section">
+        <h3><span class="material-icons-round">warning</span> Why This Matters</h3>
+        <div id="modalWhyMatters" class="modal-content-box"></div>
+      </div>
+      
+      <!-- Quick Test Commands -->
+      <div class="modal-section" id="modalCommandsSection">
+        <h3><span class="material-icons-round">terminal</span> Quick Test Commands</h3>
+        <div id="modalCommands" class="modal-content-box"></div>
+      </div>
+      
+      <!-- Remediation Steps -->
+      <div class="modal-section" id="modalRemediationSection">
+        <h3><span class="material-icons-round">build</span> How to Fix This</h3>
+        <div id="modalRemediation" class="modal-content-box"></div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeFindingModal()">
+        <span class="material-icons-round">close</span> Close
+      </button>
+      <button class="btn-primary" onclick="copyFindingDetails()">
+        <span class="material-icons-round">content_copy</span> Copy All Details
+      </button>
+    </div>
+  </div>
+</div>
+

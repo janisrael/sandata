@@ -124,11 +124,18 @@ def discover_api_endpoints(target_url, timeout=20):
         
         # Generate findings
         if critical_endpoints:
+            # Build detailed findings list
+            endpoint_details = []
+            for e in critical_endpoints:
+                endpoint_details.append(
+                    f"\n  • {e['full_url']} (HTTP {e['status_code']}) - {e.get('note', 'Contains sensitive data')}"
+                )
+            
             findings.append({
                 'id': 'api-discovery-sensitive',
                 'title': f'🔴 CRITICAL: API Endpoints with Sensitive Data - {len(critical_endpoints)} Found',
                 'severity': 'critical',
-                'detail': f'Found {len(critical_endpoints)} API endpoints that may expose sensitive information: {", ".join([e["path"] for e in critical_endpoints])}',
+                'detail': f'Found {len(critical_endpoints)} API endpoints that may expose sensitive information:{"".join(endpoint_details)}',
                 'type': 'API Endpoint Discovery',
                 'endpoints': critical_endpoints,
                 'recommendations': [
@@ -146,11 +153,21 @@ def discover_api_endpoints(target_url, timeout=20):
             })
         
         if high_risk_endpoints:
+            # Build detailed findings list
+            endpoint_details = []
+            for e in high_risk_endpoints[:10]:  # Show up to 10
+                doc_info = f" [{e.get('doc_type', 'API endpoint')}]" if e.get('doc_type') else ""
+                endpoint_details.append(
+                    f"\n  • {e['full_url']} (HTTP {e['status_code']}){doc_info} - {e.get('note', 'Publicly accessible')}"
+                )
+            if len(high_risk_endpoints) > 10:
+                endpoint_details.append(f"\n  ... and {len(high_risk_endpoints) - 10} more")
+            
             findings.append({
                 'id': 'api-discovery-documentation',
                 'title': f'⚠️ HIGH RISK: Exposed API Documentation - {len(high_risk_endpoints)} Found',
                 'severity': 'high',
-                'detail': f'Found {len(high_risk_endpoints)} exposed API documentation/admin endpoints: {", ".join([e["path"] for e in high_risk_endpoints[:5]])}',
+                'detail': f'Found {len(high_risk_endpoints)} exposed API documentation/admin endpoints:{"".join(endpoint_details)}',
                 'type': 'API Endpoint Discovery',
                 'endpoints': high_risk_endpoints,
                 'recommendations': [
@@ -168,11 +185,22 @@ def discover_api_endpoints(target_url, timeout=20):
             })
         
         if medium_risk_endpoints:
+            # Build detailed findings list
+            endpoint_details = []
+            for e in medium_risk_endpoints[:10]:  # Show up to 10
+                content_info = f" [{e.get('format', e.get('content_type', 'Unknown'))}]" if e.get('format') or e.get('content_type') else ""
+                size_info = f" ({e.get('size', 0)} bytes)" if e.get('size') else ""
+                endpoint_details.append(
+                    f"\n  • {e['full_url']} (HTTP {e['status_code']}){content_info}{size_info}"
+                )
+            if len(medium_risk_endpoints) > 10:
+                endpoint_details.append(f"\n  ... and {len(medium_risk_endpoints) - 10} more")
+            
             findings.append({
                 'id': 'api-discovery-endpoints',
                 'title': f'ℹ️ Accessible API Endpoints Found - {len(medium_risk_endpoints)}',
                 'severity': 'medium',
-                'detail': f'Found {len(medium_risk_endpoints)} accessible API endpoints: {", ".join([e["path"] for e in medium_risk_endpoints[:5]])}',
+                'detail': f'Found {len(medium_risk_endpoints)} accessible API endpoints:{"".join(endpoint_details)}',
                 'type': 'API Endpoint Discovery',
                 'endpoints': medium_risk_endpoints,
                 'recommendations': [

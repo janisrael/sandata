@@ -546,6 +546,19 @@ pre::-webkit-scrollbar-thumb:hover {
   color: var(--text-secondary);
   font-size: 0.95rem;
   margin-bottom: 0.75rem;
+  white-space: pre-wrap; /* Preserve newlines and formatting */
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  line-height: 1.8;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 3px solid var(--primary-color);
+}
+
+.finding-detail code,
+.finding-detail a {
+  color: var(--primary-color);
+  font-weight: 500;
 }
 
 /* Recommendations Accordion */
@@ -988,6 +1001,235 @@ pre::-webkit-scrollbar-thumb:hover {
 
 .notification-error .material-icons-round {
   color: var(--error);
+}
+
+/* Finding Detail Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  position: relative;
+  background: var(--bg-primary);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 900px;
+  width: 100%;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transform: rotate(90deg);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.modal-section {
+  margin-bottom: 2rem;
+}
+
+.modal-section h3 {
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-section h3 .material-icons-round {
+  color: var(--primary-color);
+  font-size: 1.3rem;
+}
+
+.modal-content-box {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid var(--primary-color);
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.modal-content-box ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.modal-content-box li {
+  margin: 0.5rem 0;
+}
+
+.modal-content-box code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Roboto Mono', monospace;
+  color: var(--primary-color);
+  font-size: 0.9rem;
+}
+
+.modal-content-box pre {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.modal-content-box a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.modal-content-box a:hover {
+  text-decoration: underline;
+}
+
+.severity-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.severity-badge.critical {
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+  border: 2px solid #ff4444;
+}
+
+.severity-badge.high {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 2px solid #ff9800;
+}
+
+.severity-badge.medium {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  border: 2px solid #ffc107;
+}
+
+.severity-badge.low {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 2px solid #4caf50;
+}
+
+.severity-badge.info {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+  border: 2px solid #2196f3;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border-top: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+  justify-content: flex-end;
+}
+
+.modal-footer button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Make findings clickable */
+.finding-detail {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.finding-detail:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: translateX(4px);
+}
+
+.finding-detail::after {
+  content: '🔍 Click for details';
+  display: block;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  margin-top: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.finding-detail:hover::after {
+  opacity: 1;
 }
 
 /* Footer */
