@@ -208,6 +208,12 @@ async function startScan() {
         // Re-enable button
         startBtn.disabled = false;
         startBtn.innerHTML = '<span class="material-icons-round">play_arrow</span> Start Scan';
+        
+        // Stop the status card sync icon from spinning
+        const statusIcon = document.querySelector('#status .material-icons-round.scanning');
+        if (statusIcon) {
+            statusIcon.classList.remove('scanning');
+        }
     }
 }
 
