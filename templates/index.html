@@ -21,6 +21,7 @@
     .alert-danger {
         background: #ff4e4e;
         color: #ffffff;
+        margin-bottom: 0px;
     }
     .alert .material-icons-round {
         font-size: 48px;
@@ -91,7 +92,7 @@
     <div class="card scan-card">
       <h2>
         <span class="material-icons-round">radar</span>
-        Start Security Scan
+        Start Security Scan <span id="scan-type-badge" class="scan-type-badge">General</span>
       </h2>
       
       <div class="form-group">
@@ -215,6 +216,7 @@
     document.addEventListener("DOMContentLoaded", () => {
       const buttons = document.querySelectorAll(".scan-type-btn");
       const advancedNote = document.querySelector(".advanced-alert-note");
+      const scanTypeBadge = document.getElementById("scan-type-badge");
     
       buttons.forEach((button) => {
         button.addEventListener("click", () => {
@@ -227,6 +229,12 @@
           // Get selected scan type
           const selectedType = button.getAttribute("data-type");
           console.log(`Selected scan type: ${selectedType}`);
+    
+          // Update the scan type badge
+          const scanTypeLabel = selectedType.charAt(0).toUpperCase() + selectedType.slice(1);
+          if (scanTypeBadge) {
+            scanTypeBadge.textContent = scanTypeLabel;
+          }
     
           // Show or hide the advanced note
           if (selectedType === "advanced") {
