@@ -72,11 +72,21 @@ def check_s3_exposure(target_url, timeout=15):
         
         # Generate findings
         if critical_buckets:
+            # Build detailed findings list
+            bucket_details = []
+            for b in critical_buckets:
+                status_text = "HTTP 200" if b.get('public_read') else "HTTP 403"
+                access_level = "PUBLIC READ" if b.get('public_read') else "Exists but forbidden"
+                listing_text = " + Directory Listing" if b.get('list_enabled') else ""
+                bucket_details.append(
+                    f"\n\n{b['bucket_name']}\nURL: {b.get('url', 'N/A')}\nStatus: {status_text}\nAccess: {access_level}{listing_text}\nRisk: {b.get('note', 'Public access enabled')}"
+                )
+            
             findings.append({
                 'id': 's3-critical-exposure',
                 'title': f'🔴 CRITICAL: Publicly Accessible S3 Buckets - {len(critical_buckets)} Found',
                 'severity': 'critical',
-                'detail': f'Found {len(critical_buckets)} S3 buckets with public access: {", ".join([b["bucket_name"] for b in critical_buckets])}. These buckets may expose sensitive data or allow unauthorized modifications.',
+                'detail': f'Found {len(critical_buckets)} S3 bucket(s) with public access.\n\n⚠️ CRITICAL: These buckets may expose sensitive data or allow unauthorized modifications!{"".join(bucket_details)}',
                 'type': 'S3 Bucket Exposure',
                 'buckets': critical_buckets,
                 'recommendations': [
@@ -94,11 +104,18 @@ def check_s3_exposure(target_url, timeout=15):
             })
         
         if high_risk_buckets:
+            # Build detailed findings list
+            bucket_details = []
+            for b in high_risk_buckets:
+                bucket_details.append(
+                    f"\n\n{b['bucket_name']}\nURL: {b.get('url', 'N/A')}\nStatus: HTTP 200\nAccess: PUBLIC READ + Directory Listing\nRisk: {b.get('note', 'Directory listing enabled')}"
+                )
+            
             findings.append({
                 'id': 's3-list-enabled',
                 'title': f'⚠️ HIGH RISK: S3 Buckets with Directory Listing - {len(high_risk_buckets)} Found',
                 'severity': 'high',
-                'detail': f'Found {len(high_risk_buckets)} S3 buckets with directory listing enabled: {", ".join([b["bucket_name"] for b in high_risk_buckets])}',
+                'detail': f'Found {len(high_risk_buckets)} S3 bucket(s) with directory listing enabled.\n\n⚠️ WARNING: Attackers can enumerate all files in these buckets!{"".join(bucket_details)}',
                 'type': 'S3 Bucket Exposure',
                 'buckets': high_risk_buckets,
                 'recommendations': [
@@ -114,11 +131,18 @@ def check_s3_exposure(target_url, timeout=15):
             })
         
         if medium_risk_buckets:
+            # Build detailed findings list with full info
+            bucket_details = []
+            for b in medium_risk_buckets:
+                bucket_details.append(
+                    f"\n  • {b['bucket_name']}\n    URL: {b.get('url', 'N/A')}\n    Status: HTTP 403\n    Access: {b.get('note', 'Exists but access forbidden')}"
+                )
+            
             findings.append({
                 'id': 's3-buckets-found',
                 'title': f'ℹ️ S3 Buckets Identified - {len(medium_risk_buckets)} Found',
                 'severity': 'medium',
-                'detail': f'Found {len(medium_risk_buckets)} S3 buckets: {", ".join([b["bucket_name"] for b in medium_risk_buckets])}. Verify access controls.',
+                'detail': f'Found {len(medium_risk_buckets)} S3 bucket(s) associated with this domain.\n\nℹ️ These buckets exist but are currently secured (HTTP 403 - Access Forbidden). Verify that access controls are properly configured and that no sensitive data could be exposed through misconfigurations.\n\nDISCOVERED BUCKETS:{"".join(bucket_details)}',
                 'type': 'S3 Bucket Exposure',
                 'buckets': medium_risk_buckets,
                 'recommendations': [
@@ -206,25 +230,27 @@ def _extract_s3_urls_from_html(html_text, soup):
     """Extract S3 URLs from HTML content"""
     s3_urls = []
     
-    # Regex patterns for S3 URLs
+    # Regex patterns for S3 URLs (non-capturing groups for regions, capturing full URL)
     patterns = [
-        r'https?://([a-z0-9\-]+)\.s3\.amazonaws\.com',
-        r'https?://s3\.amazonaws\.com/([a-z0-9\-]+)',
-        r'https?://([a-z0-9\-]+)\.s3-([a-z0-9\-]+)\.amazonaws\.com',
-        r'https?://s3-([a-z0-9\-]+)\.amazonaws\.com/([a-z0-9\-]+)',
+        r'(https?://[a-z0-9\-]+\.s3\.amazonaws\.com[^\s\"\'<>]*)',
+        r'(https?://s3\.amazonaws\.com/[a-z0-9\-]+[^\s\"\'<>]*)',
+        r'(https?://[a-z0-9\-]+\.s3-[a-z0-9\-]+\.amazonaws\.com[^\s\"\'<>]*)',
+        r'(https?://s3-[a-z0-9\-]+\.amazonaws\.com/[a-z0-9\-]+[^\s\"\'<>]*)',
     ]
     
     for pattern in patterns:
         matches = re.findall(pattern, html_text, re.IGNORECASE)
-        s3_urls.extend(matches)
+        for match in matches:
+            if match and isinstance(match, str):
+                s3_urls.append(match)
     
     # Also check src and href attributes
-    for tag in soup.find_all(['img', 'script', 'link', 'a'], src=True):
+    for tag in soup.find_all(['img', 'script', 'link', 'a']):
         src = tag.get('src', '') or tag.get('href', '')
-        if 's3.amazonaws.com' in src:
+        if src and 's3.amazonaws.com' in src.lower():
             s3_urls.append(src)
     
-    return s3_urls
+    return list(set(s3_urls))  # Remove duplicates
 
 
 def _extract_bucket_name_from_url(url):
