@@ -384,6 +384,80 @@ function generateDetailedExplanation(finding, targetUrl) {
         commands += '</pre>';
     }
     
+    // S3 Bucket Exposure findings
+    else if (findingId.includes('s3')) {
+        const buckets = finding.buckets || [];
+        
+        whatFound = `<p><strong>AWS S3 buckets were discovered</strong> associated with this domain.</p>`;
+        whatFound += `<p>${detail}</p>`;
+        
+        if (buckets.length > 0) {
+            technicalDetails = '<ul>';
+            buckets.forEach(bucket => {
+                technicalDetails += `<li><strong>${bucket.bucket_name}</strong>`;
+                technicalDetails += `<br/>URL: <a href="${bucket.url}" target="_blank">${bucket.url}</a>`;
+                technicalDetails += `<br/>Status: ${bucket.exists ? 'Bucket exists' : 'Not found'}`;
+                if (bucket.public_read) {
+                    technicalDetails += ' <span style="color: #ff4757;">[PUBLIC READ ACCESS]</span>';
+                }
+                if (bucket.list_enabled) {
+                    technicalDetails += ' <span style="color: #ff6348;">[DIRECTORY LISTING ENABLED]</span>';
+                }
+                if (bucket.note) {
+                    technicalDetails += `<br/><em>${bucket.note}</em>`;
+                }
+                technicalDetails += '</li>';
+            });
+            technicalDetails += '</ul>';
+        } else {
+            technicalDetails = `<p>${detail}</p>`;
+        }
+        
+        verification = '<ol>';
+        verification += '<li><strong>Test each S3 bucket with curl</strong> or open in browser</li>';
+        if (buckets.length > 0) {
+            buckets.slice(0, 3).forEach(bucket => {
+                verification += `<li>Check: <a href="${bucket.url}" target="_blank">${bucket.bucket_name}</a></li>`;
+            });
+        }
+        verification += '<li><strong>Status Codes:</strong></li>';
+        verification += '<ul>';
+        verification += '<li><strong>HTTP 200 OK:</strong> CRITICAL - Bucket is publicly readable!</li>';
+        verification += '<li><strong>HTTP 403 Forbidden:</strong> Good - Bucket exists but access is denied</li>';
+        verification += '<li><strong>HTTP 404 Not Found:</strong> Bucket does not exist</li>';
+        verification += '</ul>';
+        verification += '</ol>';
+        
+        whyMatters = '<ul>';
+        whyMatters += '<li><strong>Data Exposure:</strong> Public S3 buckets can expose sensitive files, backups, customer data</li>';
+        whyMatters += '<li><strong>Directory Listing:</strong> If enabled, attackers can enumerate ALL files in the bucket</li>';
+        whyMatters += '<li><strong>Compliance Violations:</strong> Violates GDPR, HIPAA, PCI DSS requirements</li>';
+        whyMatters += '<li><strong>Real-world Impact:</strong> Capital One breach (2019) - 100M records via S3 misconfiguration</li>';
+        whyMatters += '<li><strong>Financial Impact:</strong> AWS data transfer costs from attackers downloading data</li>';
+        whyMatters += '</ul>';
+        
+        commands = '<p><strong>⚠️ Test S3 buckets with curl:</strong></p><pre>';
+        if (buckets.length > 0) {
+            buckets.slice(0, 5).forEach(bucket => {
+                commands += `# Check ${bucket.bucket_name}:\n`;
+                commands += `curl -I "${bucket.url}"\n`;
+                commands += `# Expected: 403 Forbidden (secured) or 404 Not Found\n`;
+                commands += `# DANGER: If you get 200 OK, the bucket is PUBLIC!\n\n`;
+            });
+        }
+        commands += `\n# List bucket contents (if publicly readable):\n`;
+        if (buckets.length > 0) {
+            commands += `curl -s "${buckets[0].url}" | grep -o "<Key>[^<]*</Key>"\n\n`;
+        }
+        commands += `# AWS CLI commands (if you have credentials):\n`;
+        if (buckets.length > 0) {
+            commands += `aws s3 ls s3://${buckets[0].bucket_name}/\n`;
+            commands += `aws s3api get-bucket-acl --bucket ${buckets[0].bucket_name}\n`;
+            commands += `aws s3api get-public-access-block --bucket ${buckets[0].bucket_name}\n`;
+        }
+        commands += '</pre>';
+    }
+    
     // Generic/Other findings
     else {
         whatFound = `<p>${detail}</p>`;
