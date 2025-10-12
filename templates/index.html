@@ -9,6 +9,23 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@300;400;500;600;700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Round">
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .advanced-alert-note {
+        background-color: #2d2d2d;
+        padding: 10px 15px;
+        border-radius: 8px;
+        color: #ffb300;
+        display: none; /* Hidden by default */
+        /* margin-bottom: 30px; */
+    }
+    .alert-danger {
+        background: #ff4e4e;
+        color: #ffffff;
+    }
+    .alert .material-icons-round {
+        font-size: 48px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -118,8 +135,11 @@
         <span class="material-icons-round">play_arrow</span>
         Start Scan
       </button>
+      <!-- Hidden alert note -->
+        <div style="display: none; margin-top: 1rem;" class="advanced-alert-note alert alert-danger alert-dismissible shadow-soft fade show" role="alert"><span class="material-icons-round">warning</span></span></span> 
+            <span class="alert-inner--text">These mode are <strong>MORE INVASIVE</strong> and may trigger security systems.WAF (Web Application Firewall), IDS (Intrusion Detection System). <br> Only use with explicit written permission!</span>
+        </div>
     </div>
-
     <!-- Status Card -->
     <div id="status" class="card status-card hidden">
       <h3>
@@ -191,6 +211,51 @@
 
   <script src="/static/app.js"></script>
   <script src="/static/finding_modal.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const buttons = document.querySelectorAll(".scan-type-btn");
+      const advancedNote = document.querySelector(".advanced-alert-note");
+    
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          // Remove active state from all buttons
+          buttons.forEach((btn) => btn.classList.remove("active"));
+    
+          // Add active state to the clicked button
+          button.classList.add("active");
+    
+          // Get selected scan type
+          const selectedType = button.getAttribute("data-type");
+          console.log(`Selected scan type: ${selectedType}`);
+    
+          // Show or hide the advanced note
+          if (selectedType === "advanced") {
+            advancedNote.style.display = "flex";
+          } else {
+            advancedNote.style.display = "none";
+          }
+    
+          // Optional: call your handler function
+          handleScanTypeChange(selectedType);
+        });
+      });
+    });
+    
+    function handleScanTypeChange(type) {
+      switch (type) {
+        case "general":
+          console.log("Running General Scan...");
+          break;
+        case "payment":
+          console.log("Running Payment Page Scan...");
+          break;
+        case "advanced":
+          console.log("Running Advanced Scan...");
+          break;
+      }
+    }
+    </script>
+    
 </body>
 </html>
 
