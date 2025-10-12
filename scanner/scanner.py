@@ -185,7 +185,16 @@ def run_scan(target_url, options=None):
     # 1) Basic HTTP(S) GET
     try:
         log_scan('Fetching target URL...')
-        resp = requests.get(target_url, timeout=15, allow_redirects=True)
+        # Add browser-like headers to avoid 406 errors
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        }
+        resp = requests.get(target_url, timeout=15, allow_redirects=True, headers=headers)
         details['status_code'] = resp.status_code
         details['headers'] = dict(resp.headers)
         details['final_url'] = resp.url
@@ -247,11 +256,12 @@ def run_scan(target_url, options=None):
         for p in common_paths:
             url = resp.url.rstrip('/') + p
             try:
-                r = requests.head(url, timeout=6, allow_redirects=True)
+                # Use same headers as main request to avoid 406 errors
+                r = requests.head(url, timeout=6, allow_redirects=True, headers=headers)
                 if r.status_code == 200:
                     found.append({'path': p, 'status': r.status_code})
                     # Flag particularly sensitive files
-                    if p in ['/.htaccess', '/.env', '/.git/config', '/backup.sql', '/config.php.bak']:
+                    if p in ['/.htaccess', '/.env', '/.git/config', '/backup.sql', '/config.php.bak', '/phpinfo.php']:
                         sensitive_found.append(p)
             except RequestException:
                 continue
@@ -479,6 +489,9 @@ def run_scan(target_url, options=None):
             with socket.create_connection((hostname, 443), timeout=8) as sock:
                 with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
                     cert = ssock.getpeercert()
+                    tls_version = ssock.version()  # Get TLS version (e.g., 'TLSv1.2', 'TLSv1.3')
+                    cipher = ssock.cipher()  # Get cipher info
+                    
                     # check expiry
                     notAfter = cert.get('notAfter')
                     if notAfter:
@@ -496,12 +509,19 @@ def run_scan(target_url, options=None):
                             log_scan(f'⚠ TLS certificate expires in {days_left} days')
                         else:
                             log_scan(f'✓ TLS certificate valid ({days_left} days remaining)')
+                        
+                        # Build TLS info with version
                         details['tls_info'] = {
+                            'version': tls_version or 'Unknown',
+                            'cipher': cipher[0] if cipher else None,
+                            'cipher_bits': cipher[2] if cipher and len(cipher) > 2 else None,
                             'expires': notAfter,
                             'days_remaining': days_left,
+                            'expires_days': days_left,  # Add this for consistency with payment scanner
                             'issuer': cert.get('issuer'),
                             'subject': cert.get('subject')
                         }
+                        log_scan(f'✓ TLS {tls_version} with {cipher[0] if cipher else "unknown"} cipher')
         else:
             log_scan('⚠ Not using HTTPS - skipping TLS check')
     except Exception as e:
