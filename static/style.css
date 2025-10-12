@@ -1232,6 +1232,148 @@ pre::-webkit-scrollbar-thumb:hover {
   opacity: 1;
 }
 
+/* Standards & Regulations Tables */
+.standards-card {
+  background: var(--card-bg);
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: var(--shadow-neu);
+}
+
+.standards-table {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.regulations-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), 
+              inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+}
+
+.regulations-table thead {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.1), rgba(83, 82, 237, 0.1));
+}
+
+.regulations-table th {
+  padding: 1.25rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--primary-color);
+  border-bottom: 2px solid rgba(66, 185, 131, 0.2);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.regulations-table td {
+  padding: 1.25rem 1rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  line-height: 1.6;
+}
+
+.regulations-table tbody tr {
+  transition: all 0.3s ease;
+}
+
+.regulations-table tbody tr:hover {
+  background: rgba(66, 185, 131, 0.05);
+  transform: translateX(2px);
+}
+
+.regulations-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.regulations-table td small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.standards-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  background: #4f83ff;
+  color: var(--bg-primary);
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.standards-link:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.standards-link .material-icons-round {
+  font-size: 1.1rem;
+}
+
+/* Badge Styles */
+.badge-us,
+.badge-eu,
+.badge-industry {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.badge-us {
+  background: linear-gradient(135deg, #3c40c6, #5352ed);
+  color: white;
+}
+
+.badge-eu {
+  background: linear-gradient(135deg, #0984e3, #74b9ff);
+  color: white;
+}
+
+.badge-industry {
+  background: linear-gradient(135deg, #00b894, #55efc4);
+  color: #2d3436;
+}
+
+/* Responsive Tables */
+@media (max-width: 768px) {
+  .regulations-table {
+    font-size: 0.85rem;
+  }
+  
+  .regulations-table th,
+  .regulations-table td {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .standards-link {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+  }
+  
+  .badge-us,
+  .badge-eu,
+  .badge-industry {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+  }
+}
+
 /* Footer */
 .footer {
   margin-top: 60px;
