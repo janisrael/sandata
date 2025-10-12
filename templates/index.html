@@ -137,8 +137,13 @@
         Start Scan
       </button>
       <!-- Hidden alert note -->
-        <div style="display: none; margin-top: 1rem;" class="advanced-alert-note alert alert-danger alert-dismissible shadow-soft fade show" role="alert"><span class="material-icons-round">warning</span></span></span> 
-            <span class="alert-inner--text">These mode are <strong>MORE INVASIVE</strong> and may trigger security systems.WAF (Web Application Firewall), IDS (Intrusion Detection System). <br> Only use with explicit written permission!</span>
+        <div style="display: none; margin-top: 1rem;" class="advanced-alert-note alert alert-danger alert-dismissible shadow-soft fade show" role="alert">
+            <span class="material-icons-round">warning</span> 
+            <span class="alert-inner--text">
+                <strong>These modes are MORE INVASIVE</strong> and may trigger security systems like WAF (Web Application Firewall) or IDS (Intrusion Detection System).
+                <br><strong>Only use with explicit written permission!</strong>
+                <div id="advanced-options-list" style="margin-top: 0.5rem; text-align: left;"></div>
+            </span>
         </div>
     </div>
     <!-- Status Card -->
@@ -239,6 +244,7 @@
           // Show or hide the advanced note
           if (selectedType === "advanced") {
             advancedNote.style.display = "flex";
+            updateAdvancedOptionsList(); // Update the list of enabled options
           } else {
             advancedNote.style.display = "none";
           }
@@ -261,6 +267,62 @@
           console.log("Running Advanced Scan...");
           break;
       }
+    }
+    
+    // Function to read advanced options from localStorage and display them
+    function updateAdvancedOptionsList() {
+  
+      const listContainer = document.querySelector('#advanced-options-list');
+      if (!listContainer) return;
+      
+      // Retrieve advanced options from localStorage
+        const advancedOptionsStr = localStorage.getItem('advancedScanOptions');
+        let advancedOptions = {};
+
+        try {
+        advancedOptions = advancedOptionsStr ? JSON.parse(advancedOptionsStr) : {};
+        } catch (e) {
+        console.error('Failed to parse advancedScanOptions:', e);
+        advancedOptions = {};
+        }
+        console.log(advancedOptions)
+        // Map of keys to human-readable names
+        const optionNames = {
+        sqlInjection: 'SQL Injection Testing',
+        xssDetection: 'XSS Detection',
+        pluginVuln: 'CMS Plugin Vulnerability Check',
+        subdomainEnum: 'Subdomain Enumeration',
+        portScan: 'Port Scanning',
+        directoryBruteforce: 'Directory Bruteforcing',
+        apiDiscovery: 'API Endpoint Discovery',
+        s3BucketCheck: 'S3 Bucket Exposure Check'
+        };
+    
+        // Filter only enabled (true) options
+        const enabledOptions = Object.keys(advancedOptions)
+        .filter(key => advancedOptions[key] === true)
+        .map(key => optionNames[key])
+        .filter(Boolean); // remove any undefined in case of mismatch
+
+        // Render the list
+     // your container
+    if (enabledOptions.length > 0) {
+        let html = '';
+        html += '<ul style="margin: 0.5rem 0 0 1.5rem; padding: 0; text-align: left;">';
+        enabledOptions.forEach(option => {
+            html += `<li style="margin: 0.25rem 0;">${option}</li>`;
+        });
+
+        html += '</ul>';
+        listContainer.innerHTML = html;
+    } else {
+    listContainer.innerHTML = `
+        <p style="margin-top: 0.5rem; color: #ffcc00;">
+        <strong>⚠️ No advanced tests selected!</strong> 
+        Please enable at least one test in 
+        <a href="/security_list" style="color: #ffcc00; text-decoration: underline;">Security Audit</a> page.
+        </p>`;
+    }
     }
     </script>
     
