@@ -30,6 +30,11 @@ def client():
 @pytest.fixture
 def authenticated_client(client):
     """Authenticated test client"""
+    # Reset rate limiter before each test
+    from app import limiter
+    if hasattr(limiter, 'storage'):
+        limiter.storage.reset()
+    
     client.post('/login', data={
         'email': 'test@example.com',
         'password': 'password123'
