@@ -2,6 +2,8 @@
 
 A **production-ready** Flask application that performs safe, authorized security checks on websites and payment pages. Professional security assessment tool featuring authentication, role-based access control, rate limiting, and asynchronous scanning.
 
+> **Deployment**: Automated CI/CD via GitHub Actions | Last updated: 2025-11-22
+
 > **⚠️ IMPORTANT LEGAL & ETHICAL NOTICE:** Use this tool **ONLY** on systems you own or where you have explicit written permission to test. Unauthorized scanning is **illegal and unethical**.
 
 ## 🚀 What's New in v2.0
