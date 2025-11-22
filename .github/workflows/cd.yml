@@ -59,31 +59,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat > deploy.sh << DEPLOYSCRIPT
+          cat > deploy.sh << 'DEPLOYSCRIPT'
           #!/bin/bash
           set -e
           
-          DEPLOY_PATH="\$1"
-          REPO_URL="\$2"
-          GITHUB_TOKEN="\$3"
+          DEPLOY_PATH="$1"
+          REPO_URL="$2"
+          GITHUB_TOKEN="$3"
           
           echo "=== Starting Deployment ==="
           
           # Construct authenticated URL if token provided
-          if [ -n "\$GITHUB_TOKEN" ]; then
-            AUTH_REPO_URL=\$(echo "\$REPO_URL" | sed "s|https://|https://\${GITHUB_TOKEN}@|")
+          if [ -n "$GITHUB_TOKEN" ]; then
+            AUTH_REPO_URL=$(echo "$REPO_URL" | sed "s|https://|https://${GITHUB_TOKEN}@|")
           else
-            AUTH_REPO_URL="\$REPO_URL"
+            AUTH_REPO_URL="$REPO_URL"
           fi
           
           echo "=== Pulling latest code ==="
-          if [ -d "\$DEPLOY_PATH/.git" ]; then
+          if [ -d "$DEPLOY_PATH/.git" ]; then
             echo "Git repository found, pulling latest changes..."
-            cd "\$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
             
             # Update remote URL with token if provided
-            if [ -n "\$GITHUB_TOKEN" ]; then
-              git remote set-url origin "\$AUTH_REPO_URL"
+            if [ -n "$GITHUB_TOKEN" ]; then
+              git remote set-url origin "$AUTH_REPO_URL"
             fi
             
             # Try to fetch
@@ -94,41 +94,22 @@ jobs:
             else
               echo "Fetch failed, using clone method..."
               cd /tmp
-              TEMP_DIR=\$(mktemp -d)
-              git clone "\$AUTH_REPO_URL" sandata-temp
+              TEMP_DIR=$(mktemp -d)
+              git clone "$AUTH_REPO_URL" sandata-temp
               cd sandata-temp
               git checkout main
-              rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "\$DEPLOY_PATH/"
-              rm -rf "\$TEMP_DIR"
-              cd "\$DEPLOY_PATH"
+              rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
+              rm -rf "$TEMP_DIR"
+              cd "$DEPLOY_PATH"
             fi
           else
             echo "Not a git repository, cloning..."
             cd /tmp
-            TEMP_DIR=\$(mktemp -d)
-            git clone "\$AUTH_REPO_URL" sandata-temp
-            cd sandata-temp
-            git checkout main
-            rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "\$DEPLOY_PATH/"
-            rm -rf "\$TEMP_DIR"
-            cd "\$DEPLOY_PATH"
-          fi
-          DEPLOYSCRIPT
-          chmod +x deploy.sh
-          else
-            echo "Not a git repository, cloning to temporary location..."
             TEMP_DIR=$(mktemp -d)
-            cd "$TEMP_DIR"
-            git clone "$REPO_URL" sandata-temp
+            git clone "$AUTH_REPO_URL" sandata-temp
             cd sandata-temp
             git checkout main
-            
-            echo "=== Copying files to deployment directory ==="
-            mkdir -p "$DEPLOY_PATH"
-            rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' ./ "$DEPLOY_PATH/"
-            
-            echo "=== Cleaning up temporary directory ==="
-            cd /
+            rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
             rm -rf "$TEMP_DIR"
             cd "$DEPLOY_PATH"
           fi
