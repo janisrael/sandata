@@ -40,10 +40,10 @@ jobs:
         env:
           FLASK_ENV: testing
           SECRET_KEY: test-secret-key-for-ci
-          DATABASE_URL: sqlite:///:memory:
-          REDIS_URL: redis://localhost:6379/0
-          CELERY_BROKER_URL: redis://localhost:6379/1
-          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          DATABASE_URL: 'sqlite:///:memory:'
+          REDIS_URL: 'redis://localhost:6379/0'
+          CELERY_BROKER_URL: 'redis://localhost:6379/1'
+          CELERY_RESULT_BACKEND: 'redis://localhost:6379/2'
         run: |
           pip install redis
           pytest --cov=app --cov=models --cov=scanner --cov-report=term-missing -v || echo "Some tests failed, but continuing deployment"
