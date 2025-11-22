@@ -58,8 +58,10 @@ body {
 }
 
 .logo-icon {
-  font-size: 48px !important;
-  color: var(--accent-primary);
+  height: 48px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
   filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.1));
 }
 
@@ -2429,7 +2431,11 @@ color: #ffffff;
 }
 
 .logo-icon {
-  font-size: 36px !important;
+  height: 36px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.1));
 }
 
 .subtitle {
@@ -2573,7 +2579,11 @@ color: #ffffff;
   }
 
   .logo-icon {
-    font-size: 48px !important;
+    height: 48px;
+    width: auto;
+    max-width: 200px;
+    object-fit: contain;
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.1));
   }
 
   .subtitle {
