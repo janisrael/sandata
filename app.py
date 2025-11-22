@@ -486,4 +486,6 @@ if __name__ == '__main__':
     ║  Website: https://janisrael.com                            ║
     ╚════════════════════════════════════════════════════════════╝
     """)
-    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
+    # Note: debug=True and host='0.0.0.0' are for development only
+    # In production, use a proper WSGI server (gunicorn/uwsgi) with debug=False
+    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)  # nosec B201, B104

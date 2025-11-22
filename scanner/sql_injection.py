@@ -187,7 +187,7 @@ def _test_time_based_injection(target_url, tested_payloads, timeout):
                 # Test with time-based payload
                 test_url = f"{target_url}{'&' if '?' in target_url else '?'}test={payload}"
                 start = time.time()
-                requests.get(test_url, timeout=timeout + 5)
+                requests.get(test_url, timeout=timeout + 5)  # nosec B113
                 response_time = time.time() - start
                 
                 # If response time is significantly longer (>2.5 seconds more)

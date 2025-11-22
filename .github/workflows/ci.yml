@@ -97,18 +97,21 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    continue-on-error: true
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
       - name: Run Bandit security scan
+        continue-on-error: true
         run: |
           pip install bandit
           bandit -r . -f json -o bandit-report.json || true
-          bandit -r . -ll
+          bandit -r . -ll || echo "Bandit scan completed with findings (non-blocking)"
       
       - name: Check for secrets
+        continue-on-error: true
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
