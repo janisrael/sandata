@@ -1,6 +1,6 @@
-# Security Tester v2.0 — Production-Ready Security Scanning
+# Sandata — Professional Security Assessment Platform
 
-A **production-ready** Flask application that performs safe, authorized security checks on websites and payment pages. Now featuring authentication, role-based access control, rate limiting, and asynchronous scanning.
+A **production-ready** Flask application that performs safe, authorized security checks on websites and payment pages. Professional security assessment tool featuring authentication, role-based access control, rate limiting, and asynchronous scanning.
 
 > **⚠️ IMPORTANT LEGAL & ETHICAL NOTICE:** Use this tool **ONLY** on systems you own or where you have explicit written permission to test. Unauthorized scanning is **illegal and unethical**.
 
@@ -473,15 +473,17 @@ This tool is provided for **educational and authorized testing purposes only**. 
 
 ## Credits
 
-- **Developed By**: Agimat
-- **Analyzed By**: Janiz V2.5 | AI Precision Analyst
-- **Powered By**: Swordfish Project
+**Created By**: Jan Francis Israel  
+**Website**: https://janisrael.com  
+**HuggingFace**: https://huggingface.co/swordfish7412  
+**GitHub**: https://github.com/janisrael
 
 ---
 
+**Project**: Sandata  
 **Version**: 2.0  
 **Status**: Production Ready  
-**Last Updated**: October 2025
+**Last Updated**: November 2025
 
 ---
 

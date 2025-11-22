@@ -1,5 +1,5 @@
 """
-Security Tester - Main Application
+Sandata - Professional Security Assessment Platform
 Enhanced with Authentication, Rate Limiting, and Async Scanning
 """
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
@@ -430,7 +430,7 @@ def api_health():
     """Health check endpoint"""
     return jsonify({
         'status': 'ok',
-        'message': 'Security Tester API is running',
+        'message': 'Sandata API is running',
         'version': '2.0',
         'features': {
             'authentication': True,
@@ -475,11 +475,15 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 4444))
     print(f"""
     ╔════════════════════════════════════════════════════════════╗
-    ║              Security Tester v2.0 - Started                ║
+    ║                   Sandata v2.0 - Started                   ║
+    ║          Professional Security Assessment Platform         ║
     ╠════════════════════════════════════════════════════════════╣
     ║  Server running on: http://0.0.0.0:{port}                      ║
     ║  Features: Auth ✓ | Rate Limit ✓ | Async ✓               ║
     ║  Use ONLY on systems you own or have permission to test   ║
+    ║                                                            ║
+    ║  Created by: Jan Francis Israel                            ║
+    ║  Website: https://janisrael.com                            ║
     ╚════════════════════════════════════════════════════════════╝
     """)
     app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
