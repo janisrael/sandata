@@ -69,21 +69,16 @@ jobs:
           
           echo "=== Starting Deployment ==="
           
-          # Construct authenticated URL if token provided
-          if [ -n "$GITHUB_TOKEN" ]; then
-            AUTH_REPO_URL=$(echo "$REPO_URL" | sed "s|https://|https://${GITHUB_TOKEN}@|")
-          else
-            AUTH_REPO_URL="$REPO_URL"
-          fi
-          
           echo "=== Pulling latest code ==="
           if [ -d "$DEPLOY_PATH/.git" ]; then
             echo "Git repository found, pulling latest changes..."
             cd "$DEPLOY_PATH"
             
-            # Update remote URL with token if provided
+            # Configure git credential helper for token authentication
             if [ -n "$GITHUB_TOKEN" ]; then
-              git remote set-url origin "$AUTH_REPO_URL"
+              git config --local credential.helper store
+              echo "https://${GITHUB_TOKEN}@github.com" > ~/.git-credentials
+              git remote set-url origin "$REPO_URL"
             fi
             
             # Try to fetch
@@ -92,13 +87,34 @@ jobs:
               git reset --hard origin/main
               git clean -fd
             else
-              echo "Fetch failed, using clone method..."
+              echo "Fetch failed, using rsync method with checkout action..."
+              # Use GitHub Actions checkout action approach - download as archive
               cd /tmp
               TEMP_DIR=$(mktemp -d)
-              git clone "$AUTH_REPO_URL" sandata-temp
-              cd sandata-temp
-              git checkout main
-              rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
+              cd "$TEMP_DIR"
+              
+              # Download repository as tarball (no auth needed for public repos)
+              # Or use the token in the URL properly
+              if [ -n "$GITHUB_TOKEN" ]; then
+                curl -L -H "Authorization: token ${GITHUB_TOKEN}" \
+                  -H "Accept: application/vnd.github.v3.raw" \
+                  "https://api.github.com/repos/$(echo $REPO_URL | sed 's|https://github.com/||; s|\.git$||')/tarball/main" \
+                  -o repo.tar.gz 2>/dev/null || \
+                git clone "https://${GITHUB_TOKEN}@github.com/$(echo $REPO_URL | sed 's|https://github.com/||; s|\.git$||')" sandata-temp
+              else
+                git clone "$REPO_URL" sandata-temp
+              fi
+              
+              if [ -f repo.tar.gz ]; then
+                tar -xzf repo.tar.gz
+                REPO_DIR=$(ls -d */ | head -1)
+                rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' "$REPO_DIR" "$DEPLOY_PATH/"
+              else
+                cd sandata-temp
+                git checkout main
+                rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
+              fi
+              
               rm -rf "$TEMP_DIR"
               cd "$DEPLOY_PATH"
             fi
@@ -106,7 +122,14 @@ jobs:
             echo "Not a git repository, cloning..."
             cd /tmp
             TEMP_DIR=$(mktemp -d)
-            git clone "$AUTH_REPO_URL" sandata-temp
+            cd "$TEMP_DIR"
+            
+            if [ -n "$GITHUB_TOKEN" ]; then
+              git clone "https://${GITHUB_TOKEN}@github.com/$(echo $REPO_URL | sed 's|https://github.com/||; s|\.git$||')" sandata-temp
+            else
+              git clone "$REPO_URL" sandata-temp
+            fi
+            
             cd sandata-temp
             git checkout main
             rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
