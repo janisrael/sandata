@@ -70,9 +70,21 @@ jobs:
           if [ -d "$DEPLOY_PATH/.git" ]; then
             echo "Git repository found, pulling latest changes..."
             cd "$DEPLOY_PATH"
-            git fetch origin
-            git reset --hard origin/main
-            git clean -fd
+            # Try to fetch, if it fails (auth issue), use clone method
+            if git fetch origin 2>/dev/null; then
+              git reset --hard origin/main
+              git clean -fd
+            else
+              echo "Fetch failed (likely auth issue), using clone method..."
+              cd /tmp
+              TEMP_DIR=$(mktemp -d)
+              git clone "$REPO_URL" sandata-temp
+              cd sandata-temp
+              git checkout main
+              rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
+              rm -rf "$TEMP_DIR"
+              cd "$DEPLOY_PATH"
+            fi
           else
             echo "Not a git repository, cloning to temporary location..."
             TEMP_DIR=$(mktemp -d)
