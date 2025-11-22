@@ -62,14 +62,34 @@ jobs:
           set -e
           
           DEPLOY_PATH="$1"
+          REPO_URL="$2"
           
           echo "=== Starting Deployment ==="
-          cd "$DEPLOY_PATH"
           
           echo "=== Pulling latest code ==="
-          git fetch origin
-          git reset --hard origin/main
-          git clean -fd
+          if [ -d "$DEPLOY_PATH/.git" ]; then
+            echo "Git repository found, pulling latest changes..."
+            cd "$DEPLOY_PATH"
+            git fetch origin
+            git reset --hard origin/main
+            git clean -fd
+          else
+            echo "Not a git repository, cloning to temporary location..."
+            TEMP_DIR=$(mktemp -d)
+            cd "$TEMP_DIR"
+            git clone "$REPO_URL" sandata-temp
+            cd sandata-temp
+            git checkout main
+            
+            echo "=== Copying files to deployment directory ==="
+            mkdir -p "$DEPLOY_PATH"
+            rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' ./ "$DEPLOY_PATH/"
+            
+            echo "=== Cleaning up temporary directory ==="
+            cd /
+            rm -rf "$TEMP_DIR"
+            cd "$DEPLOY_PATH"
+          fi
           
           echo "=== Activating virtual environment ==="
           if [ ! -d "venv" ]; then
@@ -111,9 +131,11 @@ jobs:
           chmod +x deploy.sh
       
       - name: Deploy to AWS EC2
+        env:
+          REPO_URL: https://github.com/${{ github.repository }}.git
         run: |
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy.sh ${{ secrets.AWS_EC2_USER }}@${{ secrets.AWS_EC2_HOST }}:/tmp/deploy.sh
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.AWS_EC2_USER }}@${{ secrets.AWS_EC2_HOST }} "bash /tmp/deploy.sh ${{ secrets.AWS_DEPLOY_PATH }}"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.AWS_EC2_USER }}@${{ secrets.AWS_EC2_HOST }} "bash /tmp/deploy.sh ${{ secrets.AWS_DEPLOY_PATH }} '$REPO_URL'"
       
       - name: Verify deployment
         run: |
