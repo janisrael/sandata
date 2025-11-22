@@ -14,6 +14,31 @@ def get_recommendations(finding_id):
     from scanner.payment_scanner import get_recommendations as get_payment_recs
     return get_payment_recs(finding_id)
 
+def filter_real_findings(findings):
+    """
+    Filter out informational positive confirmations, keep only real security issues
+    Removes findings that are just status confirmations (✓, "No X Found", etc.)
+    """
+    real_findings = []
+    for f in findings:
+        # Skip info-level positive confirmations
+        if f['severity'] == 'info':
+            title_lower = f.get('title', '').lower()
+            # Keep info findings that are actual issues, not confirmations
+            if any(keyword in title_lower for keyword in ['detected', 'found', 'discovered', 'exposed', 'missing']):
+                # These are actual findings, keep them
+                real_findings.append(f)
+            # Skip positive confirmations (✓, "No X", "All X", etc.)
+            elif any(keyword in title_lower for keyword in ['✓', 'no ', 'all ', 'enabled', 'present', 'complete', 'properly']):
+                continue  # Skip positive confirmations
+            else:
+                # Keep other info findings that might be important
+                real_findings.append(f)
+        else:
+            # Keep all non-info findings (critical, high, medium, low)
+            real_findings.append(f)
+    return real_findings
+
 def score_from_findings(findings):
     # Start at 100, subtract weighted issues
     score = 100
@@ -541,10 +566,17 @@ def run_scan(target_url, options=None):
     else:
         log_scan('✓ Server header hidden')
 
-    # 4) Build summary and score
+    # 4) Filter out informational positive confirmations, keep only real security issues
+    log_scan('Filtering findings to show only real security issues...')
+    real_findings = filter_real_findings(findings)
+    info_count = len(findings) - len(real_findings)
+    if info_count > 0:
+        log_scan(f'Filtered out {info_count} informational status messages')
+    
+    # 5) Build summary and score
     log_scan('Generating scan report...')
-    score = score_from_findings(findings)
-    summary = f'{len(findings)} findings, score: {score}'
+    score = score_from_findings(real_findings)
+    summary = f'{len(real_findings)} findings, score: {score}'
     log_scan(f'✓ Scan complete! Score: {score}/100')
 
     result = {
@@ -556,7 +588,7 @@ def run_scan(target_url, options=None):
         'scan_type': 'general',
         'scan_logs': scan_logs,  # Include scan progress logs
         'details': {
-            'findings': findings,
+            'findings': real_findings,  # Use filtered findings
             'meta': details
         }
     }

@@ -12,6 +12,31 @@ from urllib.parse import urlparse
 # Specialized payment page security scanner
 # IMPORTANT: These are OBSERVATIONAL checks only - no form submissions or real transactions
 
+def filter_real_findings(findings):
+    """
+    Filter out informational positive confirmations, keep only real security issues
+    Removes findings that are just status confirmations (✓, "No X Found", etc.)
+    """
+    real_findings = []
+    for f in findings:
+        # Skip info-level positive confirmations
+        if f['severity'] == 'info':
+            title_lower = f.get('title', '').lower()
+            # Keep info findings that are actual issues, not confirmations
+            if any(keyword in title_lower for keyword in ['detected', 'found', 'discovered', 'exposed', 'missing']):
+                # These are actual findings, keep them
+                real_findings.append(f)
+            # Skip positive confirmations (✓, "No X", "All X", etc.)
+            elif any(keyword in title_lower for keyword in ['✓', 'no ', 'all ', 'enabled', 'present', 'complete', 'properly']):
+                continue  # Skip positive confirmations
+            else:
+                # Keep other info findings that might be important
+                real_findings.append(f)
+        else:
+            # Keep all non-info findings (critical, high, medium, low)
+            real_findings.append(f)
+    return real_findings
+
 def score_from_findings(findings):
     """Calculate security score from findings"""
     score = 100
@@ -990,13 +1015,20 @@ def run_payment_scan(target_url, options=None):
         details['error'] = str(e)
         log_scan(f'❌ Network error: {str(e)[:50]}')
     
+    # Filter out informational positive confirmations, keep only real security issues
+    log_scan('Filtering findings to show only real security issues...')
+    real_findings = filter_real_findings(findings)
+    info_count = len(findings) - len(real_findings)
+    if info_count > 0:
+        log_scan(f'Filtered out {info_count} informational status messages')
+    
     # Calculate score
     log_scan('Calculating security score...')
-    score = score_from_findings(findings)
+    score = score_from_findings(real_findings)
     
     # Build summary
-    critical_count = len([f for f in findings if f['severity'] == 'critical'])
-    high_count = len([f for f in findings if f['severity'] == 'high'])
+    critical_count = len([f for f in real_findings if f['severity'] == 'critical'])
+    high_count = len([f for f in real_findings if f['severity'] == 'high'])
     
     if critical_count > 0:
         summary = f'❌ CRITICAL: {critical_count} critical issues found. Score: {score}'
@@ -1005,7 +1037,7 @@ def run_payment_scan(target_url, options=None):
         summary = f'⚠️ WARNING: {high_count} high-severity issues. Score: {score}'
         log_scan(f'⚠ {high_count} high-severity issues found')
     else:
-        summary = f'✓ {len(findings)} findings, score: {score}'
+        summary = f'✓ {len(real_findings)} findings, score: {score}'
     
     log_scan(f'✓ Payment scan complete! Score: {score}/100')
     
@@ -1018,7 +1050,7 @@ def run_payment_scan(target_url, options=None):
         'scan_type': 'payment',
         'scan_logs': scan_logs,  # Include scan progress logs
         'details': {
-            'findings': findings,
+            'findings': real_findings,  # Use filtered findings
             'meta': details
         }
     }
