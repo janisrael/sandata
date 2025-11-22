@@ -11,6 +11,7 @@ def client():
     app.config['TESTING'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['WTF_CSRF_ENABLED'] = False
+    app.config['RATELIMIT_STORAGE_URL'] = 'memory://'  # Use memory for rate limiting in tests
     
     with app.test_client() as client:
         with app.app_context():
@@ -43,7 +44,7 @@ def test_register(client):
     # Check user was created
     with app.app_context():
         user = User.query.filter_by(username='newuser').first()
-        assert user is not none
+        assert user is not None
         assert user.email == 'newuser@example.com'
 
 def test_login(client, test_user):

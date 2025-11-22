@@ -66,6 +66,8 @@ class TestingConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    # Use memory storage for rate limiting in tests (no Redis needed)
+    RATELIMIT_STORAGE_URL = 'memory://'
 
 # Configuration dictionary
 config = {
