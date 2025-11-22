@@ -21,16 +21,21 @@ def filter_real_findings(findings):
     """
     real_findings = []
     for f in findings:
+        title = f.get('title', '')
+        title_lower = title.lower()
+        
+        # Always skip anything with ✓ symbol (positive confirmation)
+        if '✓' in title:
+            continue
+        
         # Skip info-level positive confirmations
         if f['severity'] == 'info':
-            title_lower = f.get('title', '').lower()
-            # Keep info findings that are actual issues, not confirmations
-            if any(keyword in title_lower for keyword in ['detected', 'found', 'discovered', 'exposed', 'missing']):
-                # These are actual findings, keep them
+            # Skip positive confirmations ("No X", "All X", "enabled", "present", etc.)
+            if any(keyword in title_lower for keyword in ['no ', 'all ', 'enabled', 'present', 'complete', 'properly', 'no additional', 'no open']):
+                continue
+            # Keep info findings that are actual discoveries (detected, found, discovered, exposed, missing)
+            elif any(keyword in title_lower for keyword in ['detected', 'found', 'discovered', 'exposed', 'missing']):
                 real_findings.append(f)
-            # Skip positive confirmations (✓, "No X", "All X", etc.)
-            elif any(keyword in title_lower for keyword in ['✓', 'no ', 'all ', 'enabled', 'present', 'complete', 'properly']):
-                continue  # Skip positive confirmations
             else:
                 # Keep other info findings that might be important
                 real_findings.append(f)
