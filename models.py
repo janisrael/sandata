@@ -115,15 +115,32 @@ def init_db(app):
         admin_email = app.config.get('ADMIN_EMAIL', 'admin@example.com')
         admin_password = app.config.get('ADMIN_PASSWORD', 'admin123')
         
-        admin = User.query.filter_by(email=admin_email).first()
-        if not admin:
-            admin = User(
-                username='admin',
-                email=admin_email,
-                role='admin'
-            )
-            admin.set_password(admin_password)
-            db.session.add(admin)
-            db.session.commit()
-            print(f"✅ Created admin user: {admin_email}")
+        try:
+            admin = User.query.filter_by(email=admin_email).first()
+            if not admin:
+                admin = User(
+                    username='admin',
+                    email=admin_email,
+                    role='admin'
+                )
+                admin.set_password(admin_password)
+                db.session.add(admin)
+                db.session.commit()
+                print(f"✅ Created admin user: {admin_email}")
+            else:
+                print(f"ℹ️ Admin user already exists: {admin_email}")
+        except Exception as e:
+            # Handle race condition where multiple workers try to create admin simultaneously
+            db.session.rollback()
+            try:
+                # Try to verify admin exists
+                admin = User.query.filter_by(email=admin_email).first()
+                if admin:
+                    print(f"ℹ️ Admin user exists (race condition handled): {admin_email}")
+                else:
+                    import logging
+                    logging.warning(f"Could not create or verify admin user: {e}")
+            except Exception:
+                import logging
+                logging.error(f"Error checking admin user: {e}")
 
