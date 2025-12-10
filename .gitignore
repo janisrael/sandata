@@ -27,11 +27,16 @@ wheels/
 *.db
 *.sqlite
 *.sqlite3
+instance/*.db
+instance/*.sqlite
+instance/*.sqlite3
 
 # Backups
 *.zip
 *.bak
 *.backup
+* copy.*
+*_copy.*
 
 # IDE
 .vscode/
@@ -50,6 +55,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
+.env.*
 
 # Testing & Coverage
 .coverage
@@ -60,6 +66,22 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+pytest.ini
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Utility scripts (one-time use, not needed in production)
+*.sh
+!k8s/*.sh
+!.github/**/*.sh
+
+# Documentation (keep only essential README files)
+*.md
+!README.md
+!.github/workflows/README.md
 
 # CI/CD
 bandit-report.json
