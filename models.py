@@ -112,35 +112,46 @@ def init_db(app):
                 raise e from verify_error
         
         # Create default admin user if not exists
+        # Handle race conditions where multiple workers try to create admin simultaneously
         admin_email = app.config.get('ADMIN_EMAIL', 'admin@example.com')
         admin_password = app.config.get('ADMIN_PASSWORD', 'admin123')
         
         try:
+            # Check if admin exists first
             admin = User.query.filter_by(email=admin_email).first()
             if not admin:
-                admin = User(
-                    username='admin',
-                    email=admin_email,
-                    role='admin'
-                )
-                admin.set_password(admin_password)
-                db.session.add(admin)
-                db.session.commit()
-                print(f"✅ Created admin user: {admin_email}")
+                # Double-check by username as well (race condition protection)
+                admin = User.query.filter_by(username='admin').first()
+                if not admin:
+                    try:
+                        admin = User(
+                            username='admin',
+                            email=admin_email,
+                            role='admin'
+                        )
+                        admin.set_password(admin_password)
+                        db.session.add(admin)
+                        db.session.commit()
+                        print(f"✅ Created admin user: {admin_email}")
+                    except Exception as create_error:
+                        # Handle race condition - another worker might have created it
+                        db.session.rollback()
+                        # Verify it was created by another worker
+                        admin = User.query.filter_by(email=admin_email).first()
+                        if admin:
+                            print(f"ℹ️ Admin user created by another worker: {admin_email}")
+                        else:
+                            import logging
+                            logging.warning(f"Could not create admin user: {create_error}")
+                else:
+                    print(f"ℹ️ Admin user already exists (by username): {admin_email}")
             else:
                 print(f"ℹ️ Admin user already exists: {admin_email}")
         except Exception as e:
-            # Handle race condition where multiple workers try to create admin simultaneously
+            # Final fallback - just log and continue
+            import logging
+            logging.warning(f"Error during admin user initialization: {e}")
             db.session.rollback()
-            try:
-                # Try to verify admin exists
-                admin = User.query.filter_by(email=admin_email).first()
-                if admin:
-                    print(f"ℹ️ Admin user exists (race condition handled): {admin_email}")
-                else:
-                    import logging
-                    logging.warning(f"Could not create or verify admin user: {e}")
-            except Exception:
-                import logging
-                logging.error(f"Error checking admin user: {e}")
+            # Don't crash the app - admin might already exist
+            print(f"⚠️ Admin user initialization had issues, but continuing...")
 
