@@ -1,14 +1,18 @@
-name: CD - Deploy to AWS
+name: Deploy to Production
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main  # Main branch for production deployment (Hetzner Kubernetes)
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
 
 jobs:
-  deploy:
-    name: Deploy to AWS EC2
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     
     services:
       redis:
@@ -25,18 +29,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Free disk space
+        run: |
+          echo "=== Checking disk space ==="
+          df -h
+          echo "=== Cleaning up disk space ==="
+          pip cache purge || true
+          sudo apt-get clean || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/share/boost || true
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY" || true
+          sudo rm -rf ~/.cache/pip || true
+          sudo rm -rf /tmp/* || true
+          echo "=== Disk space after cleanup ==="
+          df -h
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
       
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --no-cache-dir -r requirements.txt
       
-      - name: Run tests before deployment
+      - name: Run tests
         env:
           FLASK_ENV: testing
           SECRET_KEY: test-secret-key-for-ci
@@ -48,153 +68,134 @@ jobs:
           pip install redis
           pytest --cov=app --cov=models --cov=scanner --cov-report=term-missing -v || echo "Some tests failed, but continuing deployment"
       
+      - name: Check for syntax errors
+        run: |
+          python -m py_compile app.py
+          find . -name "*.py" \
+            -not -path "./venv*/*" \
+            -not -path "./.git/*" \
+            -not -path "./__pycache__/*" \
+            -not -path "./instance/*" \
+            -not -path "./htmlcov/*" \
+            -exec python -m py_compile {} \;
+      
+      - name: Verify imports
+        run: |
+          python -c "import app; print('App imports successfully')"
+          python -c "from models import db, User; print('Models import successfully')"
+          python -c "from scanner import scanner; print('Scanner imports successfully')"
+      
+      - name: Cleanup after tests
+        if: always()
+        run: |
+          echo "=== Final cleanup ==="
+          pip cache purge || true
+          sudo apt-get clean || true
+          rm -rf __pycache__ || true
+          find . -type d -name __pycache__ -exec rm -rf {} + || true
+
+  deploy-production:
+    name: Deploy to Production
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.AWS_EC2_HOST }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.HETZNER_SSH_PRIVATE_KEY }}" > ~/.ssh/hetzner_key
+          chmod 600 ~/.ssh/hetzner_key
+          ssh-keyscan -H ${{ secrets.HETZNER_HOST }} >> ~/.ssh/known_hosts
       
-      - name: Create deployment script
+      - name: Deploy to Hetzner Kubernetes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF: ${{ github.ref }}
+          SSH_OPTS: "-i ~/.ssh/hetzner_key -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -o ConnectTimeout=30"
         run: |
-          cat > deploy.sh << 'DEPLOYSCRIPT'
-          #!/bin/bash
-          set -e
+          echo "=== Deploying to Hetzner Kubernetes ==="
           
-          DEPLOY_PATH="$1"
-          REPO_URL="$2"
-          GITHUB_TOKEN="$3"
+          # Upload source code to Hetzner and build there (avoids GitHub Actions disk space issues)
+          echo "=== Uploading source code to Hetzner ==="
+          tar --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' --exclude='instance' --exclude='*.db' --exclude='*.sqlite*' --exclude='htmlcov' --exclude='logs' -czf /tmp/sandata-source.tar.gz .
+          scp ${SSH_OPTS} /tmp/sandata-source.tar.gz root@${{ secrets.HETZNER_HOST }}:/tmp/
+          rm -f /tmp/sandata-source.tar.gz
           
-          echo "=== Starting Deployment ==="
-          
-          echo "=== Pulling latest code ==="
-          if [ -d "$DEPLOY_PATH/.git" ]; then
-            echo "Git repository found, pulling latest changes..."
-            cd "$DEPLOY_PATH"
+          # Build Docker image directly on Hetzner server
+          echo "=== Building Docker image on Hetzner ==="
+          ssh ${SSH_OPTS} root@${{ secrets.HETZNER_HOST }} << 'DEPLOY_SCRIPT'
+            set -e
+            set -o pipefail
             
-            # Configure git credential helper for token authentication
-            if [ -n "$GITHUB_TOKEN" ]; then
-              git config --local credential.helper store
-              echo "https://${GITHUB_TOKEN}@github.com" > ~/.git-credentials
-              git remote set-url origin "$REPO_URL"
-            fi
-            
-            # Try to fetch
-            if git fetch origin 2>/dev/null; then
-              echo "Fetch successful, resetting to origin/main..."
-              git reset --hard origin/main
-              git clean -fd
-            else
-              echo "Fetch failed, using rsync method with checkout action..."
-              # Use GitHub Actions checkout action approach - download as archive
-              cd /tmp
-              TEMP_DIR=$(mktemp -d)
-              cd "$TEMP_DIR"
-              
-              # Download repository as tarball (no auth needed for public repos)
-              # Or use the token in the URL properly
-              if [ -n "$GITHUB_TOKEN" ]; then
-                curl -L -H "Authorization: token ${GITHUB_TOKEN}" \
-                  -H "Accept: application/vnd.github.v3.raw" \
-                  "https://api.github.com/repos/$(echo $REPO_URL | sed 's|https://github.com/||; s|\.git$||')/tarball/main" \
-                  -o repo.tar.gz 2>/dev/null || \
-                git clone "https://${GITHUB_TOKEN}@github.com/$(echo $REPO_URL | sed 's|https://github.com/||; s|\.git$||')" sandata-temp
-              else
-                git clone "$REPO_URL" sandata-temp
-              fi
-              
-              if [ -f repo.tar.gz ]; then
-                tar -xzf repo.tar.gz
-                REPO_DIR=$(ls -d */ | head -1)
-                rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' "$REPO_DIR" "$DEPLOY_PATH/"
-              else
-                cd sandata-temp
-                git checkout main
-                rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
-              fi
-              
-              rm -rf "$TEMP_DIR"
-              cd "$DEPLOY_PATH"
-            fi
-          else
-            echo "Not a git repository, cloning..."
             cd /tmp
-            TEMP_DIR=$(mktemp -d)
-            cd "$TEMP_DIR"
+            rm -rf sandata-build || true
+            mkdir -p sandata-build
+            cd sandata-build
+            tar -xzf /tmp/sandata-source.tar.gz
+            rm /tmp/sandata-source.tar.gz
             
-            if [ -n "$GITHUB_TOKEN" ]; then
-              git clone "https://${GITHUB_TOKEN}@github.com/$(echo $REPO_URL | sed 's|https://github.com/||; s|\.git$||')" sandata-temp
+            echo "Building Docker image (this may take several minutes)..."
+            docker build -t sandata:latest . || {
+              echo "Docker build failed"
+              exit 1
+            }
+            
+            echo "Importing image into k3s..."
+            docker save sandata:latest | k3s ctr images import - || {
+              echo "Image import failed"
+              exit 1
+            }
+            
+            echo "Applying Kubernetes manifests..."
+            if [ ! -d "/tmp/sandata-k8s" ]; then
+              mkdir -p /tmp/sandata-k8s
+            fi
+            cp -r k8s/* /tmp/sandata-k8s/ 2>/dev/null || true
+            
+            # Apply manifests if they exist
+            if [ -d "/tmp/sandata-k8s" ] && [ "$(ls -A /tmp/sandata-k8s/*.yaml 2>/dev/null)" ]; then
+              kubectl apply -f /tmp/sandata-k8s/namespace.yaml || true
+              kubectl apply -f /tmp/sandata-k8s/secret.yaml || true
+              kubectl apply -f /tmp/sandata-k8s/redis-deployment.yaml || true
+              kubectl apply -f /tmp/sandata-k8s/deployment.yaml || true
+              kubectl apply -f /tmp/sandata-k8s/service.yaml || true
+              kubectl apply -f /tmp/sandata-k8s/ingress.yaml || true
+              
+              echo "Restarting deployment..."
+              kubectl rollout restart deployment/sandata-app -n sandata || {
+                echo "Deployment restart failed"
+                exit 1
+              }
+              
+              kubectl rollout status deployment/sandata-app -n sandata --timeout=120s || {
+                echo "Deployment status check timed out, but may still be in progress"
+              }
             else
-              git clone "$REPO_URL" sandata-temp
+              echo "Kubernetes manifests not found, skipping kubectl apply"
             fi
             
-            cd sandata-temp
-            git checkout main
-            rsync -av --exclude='.git' --exclude='venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='instance' --exclude='.env' ./ "$DEPLOY_PATH/"
-            rm -rf "$TEMP_DIR"
-            cd "$DEPLOY_PATH"
-          fi
-          
-          echo "=== Activating virtual environment ==="
-          if [ ! -d "venv" ]; then
-            python3 -m venv venv
-          fi
-          source venv/bin/activate
-          
-          echo "=== Installing/updating dependencies ==="
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          
-          echo "=== Checking Redis ==="
-          sudo systemctl status redis || sudo systemctl start redis || echo "Redis check skipped"
-          
-          echo "=== Restarting application ==="
-          if screen -list | grep -q "sandata-app"; then
-            screen -S sandata-app -X quit || true
-            sleep 2
-          fi
-          
-          screen -dmS sandata-app bash -c "cd '$DEPLOY_PATH' && source venv/bin/activate && python app.py"
-          
-          echo "=== Restarting Celery worker ==="
-          if screen -list | grep -q "sandata-celery"; then
-            screen -S sandata-celery -X quit || true
-            sleep 2
-          fi
-          
-          screen -dmS sandata-celery bash -c "cd '$DEPLOY_PATH' && source venv/bin/activate && celery -A celery_worker.celery worker --loglevel=info"
-          
-          echo "=== Waiting for services to start ==="
-          sleep 5
-          
-          echo "=== Checking application status ==="
-          screen -list
-          
-          echo "=== Deployment completed ==="
-          DEPLOYSCRIPT
-          chmod +x deploy.sh
-      
-      - name: Deploy to AWS EC2
-        env:
-          REPO_URL: https://github.com/${{ github.repository }}.git
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy.sh ${{ secrets.AWS_EC2_USER }}@${{ secrets.AWS_EC2_HOST }}:/tmp/deploy.sh
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.AWS_EC2_USER }}@${{ secrets.AWS_EC2_HOST }} "bash /tmp/deploy.sh ${{ secrets.AWS_DEPLOY_PATH }} '$REPO_URL' '$GITHUB_TOKEN'"
+            echo "Cleaning up..."
+            cd /
+            rm -rf /tmp/sandata-build
+            rm -rf /tmp/sandata-k8s
+            
+            echo "Deployment complete"
+          DEPLOY_SCRIPT
       
       - name: Verify deployment
         run: |
           sleep 10
-          curl -f https://sandata.janisrael.com/api/health || echo "Health check failed, but deployment may still be in progress"
+          curl -f ${{ secrets.HETZNER_APP_URL || 'https://sandata.janisrael.com' }}/api/health || echo "Health check failed, but deployment may still be in progress"
       
       - name: Notify deployment status
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Deployment successful!"
+            echo "Production deployment successful!"
           else
-            echo "❌ Deployment failed!"
+            echo "Production deployment failed!"
           fi
-

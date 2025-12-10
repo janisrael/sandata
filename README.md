@@ -1,53 +1,90 @@
-# Sandata — Professional Security Assessment Platform
+# Sandata - Professional Security Assessment Platform
 
-A **production-ready** Flask application that performs safe, authorized security checks on websites and payment pages. Professional security assessment tool featuring authentication, role-based access control, rate limiting, and asynchronous scanning.
+A production-ready Flask application that performs safe, authorized security checks on websites and payment pages. Professional security assessment tool featuring authentication, role-based access control, rate limiting, and asynchronous scanning.
 
-> **Deployment**: Automated CI/CD via GitHub Actions | Last updated: 2025-11-22
+**Deployment**: Automated CI/CD via GitHub Actions to Hetzner Kubernetes | Last updated: 2025-01-08
 
-> **⚠️ IMPORTANT LEGAL & ETHICAL NOTICE:** Use this tool **ONLY** on systems you own or where you have explicit written permission to test. Unauthorized scanning is **illegal and unethical**.
+**IMPORTANT LEGAL & ETHICAL NOTICE:** Use this tool ONLY on systems you own or where you have explicit written permission to test. Unauthorized scanning is illegal and unethical.
 
-## 🚀 What's New in v2.0
+## What's New in v2.0
 
 ### Phase 1 Production Features
-- ✅ **User Authentication** - Secure login/registration system with password hashing
-- ✅ **Role-Based Access Control (RBAC)** - Admin, User, and Guest roles
-- ✅ **Rate Limiting** - Configurable limits per role (5/min, 50/hour for users)
-- ✅ **Async Scanning** - Celery + Redis for background job processing
-- ✅ **Real-time Progress** - Track scan status in real-time
-- ✅ **User Dashboard** - Personal scan history and statistics
-- ✅ **Admin Panel** - User management and system monitoring
-- ✅ **Testing Suite** - Comprehensive unit and integration tests
-- ✅ **Enhanced Security** - CSRF protection, session management, secure cookies
+- User Authentication - Secure login/registration system with password hashing
+- Role-Based Access Control (RBAC) - Admin, User, and Guest roles
+- Rate Limiting - Configurable limits per role (5/min, 50/hour for users)
+- Async Scanning - Celery + Redis for background job processing
+- Real-time Progress - Track scan status in real-time
+- User Dashboard - Personal scan history and statistics
+- Admin Panel - User management and system monitoring
+- Testing Suite - Comprehensive unit and integration tests
+- Enhanced Security - CSRF protection, session management, secure cookies
 
 ## Features
 
 ### Security Scanning Capabilities
 
-#### General Security Scan (22 Tests)
-1. HTTP Security Headers validation (CSP, X-Frame-Options, HSTS, etc.)
-2. TLS/SSL Certificate inspection and expiry checks
+#### General Security Scan (8 Core Tests)
+1. HTTP Security Headers validation (CSP, X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy)
+2. TLS/SSL Certificate inspection and expiry checks (validity, expiration, issuer, subject details)
 3. Cookie Security flags analysis (HttpOnly, Secure, SameSite)
-4. Reflected Input detection (XSS risk identification)
-5. Critical Files Exposure checks (.htaccess, .env, .git/config, backups)
-6. Common Files/Endpoints exposure
-7. CMS Detection (WordPress, Joomla)
-8. Server Version exposure analysis
+4. Reflected Input detection (XSS risk identification using benign test tokens)
+5. Critical Files Exposure checks (.htaccess, .env, .git/config, backup.sql, config.php.bak)
+6. Common Files/Endpoints exposure (robots.txt, sitemap.xml, /admin/, phpinfo.php)
+7. CMS Detection (WordPress, Joomla, Drupal, Ghost, Wix, Squarespace, Webflow, Shopify)
+8. Server Version exposure analysis (Apache, Nginx version leaks)
 
 #### Payment Page Security Scan (14 Specialized Tests)
-1. HTTPS Enforcement validation
-2. Mixed Content detection
-3. Payment Form security analysis
-4. PCI DSS Compliance indicators
-5. Payment Gateway detection (Stripe, PayPal, Square, etc.)
-6. CSRF Token validation
-7. reCAPTCHA/CAPTCHA detection (Google, hCaptcha, Turnstile)
-8. HTML5 Form Validation analysis
-9. .htaccess File exposure check
-10. TLS 1.2+ requirement verification
-11. Cipher Strength analysis
-12. Credit Card Field security
-13. Autocomplete security settings
-14. Bot Protection validation
+1. HTTPS Enforcement validation (HTTPS usage and HSTS header configuration)
+2. Mixed Content detection (HTTP resources loaded on HTTPS pages)
+3. Payment Form security analysis (form methods, action URLs, payment-related input fields)
+4. CSRF Protection validation (CSRF tokens in forms - CRITICAL for payment forms)
+5. reCAPTCHA/CAPTCHA detection (Google reCAPTCHA v2/v3/Enterprise, hCaptcha, Cloudflare Turnstile)
+6. HTML5 Form Validation analysis (required, pattern, maxlength attributes and input types)
+7. .htaccess File exposure check (verifies .htaccess files are not publicly accessible - CRITICAL if exposed)
+8. Payment Gateway detection (Stripe, PayPal, Square, Braintree, Authorize.Net, Worldpay, Adyen)
+9. PCI DSS Compliance indicators (PCI DSS badges, security header compliance)
+10. JavaScript Security Analysis (inline scripts, third-party script validation, unknown sources)
+11. Enhanced Cookie Security (Secure flag, HttpOnly flag, SameSite attribute validation)
+12. Advanced TLS Configuration (TLS 1.2+ requirement, 128-bit minimum cipher strength, certificate expiration)
+13. Credit Card Field Security (direct card input detection, CVV field validation, autocomplete settings)
+14. Autocomplete Security (verifies sensitive payment fields have autocomplete disabled or appropriate values)
+
+#### Advanced Scan Options (8 Invasive Tests - Authorization Required)
+**WARNING: These tests are MORE INVASIVE and may trigger WAF/IDS alerts. Only use with explicit written permission!**
+
+1. **SQL Injection Testing** - Tests common SQL injection vectors using safe payloads. Includes error-based SQLi, boolean-based blind SQLi, and time-based detection. May trigger WAF/IDS alerts.
+
+2. **XSS Detection** - Tests for Cross-Site Scripting vulnerabilities using safe payloads. Detects reflected XSS, DOM-based XSS indicators, and dangerous JavaScript patterns. May trigger WAF/IDS alerts.
+
+3. **CMS Plugin Vulnerability Check** - Checks detected CMS plugins, themes, and extensions against known vulnerability databases. Detects outdated WordPress/Joomla/Drupal versions and their plugins with known CVEs. Safe and non-invasive.
+
+4. **Subdomain Enumeration** - Discovers subdomains using certificate transparency logs (crt.sh) and DNS lookups. Identifies potentially sensitive subdomains (dev, test, staging, admin). Safe and non-invasive.
+
+5. **Port Scanning** - Scans common network ports using nmap to identify open services and potential attack vectors. Detects critical exposures (databases, admin ports). **WARNING: This is the most invasive test - will trigger security alerts!**
+
+6. **Directory Bruteforcing** - Discovers hidden directories and files using common wordlists. Detects sensitive files (.env, .git, config files), admin panels, backups. Tests with 50ms delay between requests. **Only use with explicit written permission!**
+
+7. **API Endpoint Discovery** - Discovers API endpoints, documentation (Swagger/OpenAPI, GraphQL), and sensitive information in APIs. Detects REST endpoints, versioning, debug endpoints. Safe and non-invasive.
+
+8. **S3 Bucket Exposure Check** - Checks for publicly accessible AWS S3 buckets and misconfigurations. Generates potential bucket names from domain, extracts S3 URLs from page content, tests for public read/write access. Safe and non-invasive.
+
+### Compliance & Standards
+
+Sandata follows official cybersecurity regulations, guidelines, and frameworks from Canadian and International authorities:
+
+#### Canadian Regulations & Guidelines
+- **Critical Cyber Systems Protection Act (CCSPA)** - Establishes cybersecurity duties for operators in federally regulated critical sectors
+- **PIPEDA (Personal Information Protection and Electronic Documents Act)** - Requires organizations to implement appropriate safeguards to protect personal data
+- **Firewall Security Considerations (ITSAP.80.039)** - Provides guidance on securing firewalls and network security
+- **Credential Stuffing Protection Strategies** - Recommends security controls to safeguard web services
+
+#### International Standards & Frameworks
+- **NIST SP 800-41 Rev.1** - U.S. Government WAF/Firewall Policy guidelines
+- **NIST SP 800-94** - U.S. Government IDS/IPS Systems guidelines
+- **ENISA WAF Guide** - European Union WAF Evaluation framework
+- **OWASP WAFEC** - Industry-standard practical WAF Testing criteria
+
+All security tests, vulnerability assessments, and scanning techniques implemented in Sandata align with the guidelines established by these authorities, ensuring reliable, accurate, and legally compliant security audits.
 
 ### User Management & Security
 - **Authentication System** - Secure login with bcrypt password hashing
@@ -378,41 +415,22 @@ security_tester/
     └── test_rate_limiting.py  # Rate limiting tests
 ```
 
-## Security Best Practices
-
-### What This Tool DOES
-✓ Observational security checks  
-✓ Header and TLS analysis  
-✓ Form security validation  
-✓ Safe reflection tests  
-✓ Common file enumeration  
-✓ Security configuration review  
-
-### What This Tool DOES NOT DO
-✗ Exploit vulnerabilities  
-✗ Brute force attacks  
-✗ SQL injection exploitation  
-✗ Remote code execution  
-✗ DDoS testing  
-✗ Password cracking  
-✗ Aggressive port scanning  
-
 ## Production Deployment
 
 ### Security Checklist
 
 Before deploying to production:
 
-1. ✅ Change `SECRET_KEY` to a strong random value
-2. ✅ Update admin credentials
-3. ✅ Set `FLASK_ENV=production`
-4. ✅ Enable `SESSION_COOKIE_SECURE=True` (requires HTTPS)
-5. ✅ Use PostgreSQL instead of SQLite
-6. ✅ Set up proper Redis persistence
-7. ✅ Configure firewall rules
-8. ✅ Set up SSL/TLS certificates
-9. ✅ Enable logging and monitoring
-10. ✅ Regular backup strategy
+1. Change `SECRET_KEY` to a strong random value
+2. Update admin credentials
+3. Set `FLASK_ENV=production`
+4. Enable `SESSION_COOKIE_SECURE=True` (requires HTTPS)
+5. Use PostgreSQL instead of SQLite (optional)
+6. Set up proper Redis persistence
+7. Configure firewall rules
+8. Set up SSL/TLS certificates
+9. Enable logging and monitoring
+10. Regular backup strategy
 
 ### Recommended Stack
 
@@ -424,11 +442,29 @@ Before deploying to production:
 - **Monitoring**: Prometheus + Grafana
 - **Logging**: ELK Stack or CloudWatch
 
-### Docker Deployment (Optional)
+### Kubernetes Deployment
 
-```bash
-# Coming soon - Docker Compose setup for easy deployment
-```
+The application is deployed to Hetzner Kubernetes (k3s) using GitHub Actions CI/CD.
+
+**Prerequisites:**
+- Kubernetes cluster (k3s)
+- Nginx Ingress Controller
+- Redis deployment (included in k8s manifests)
+
+**Deployment Process:**
+1. Push to `main` branch triggers CI/CD
+2. Tests run automatically
+3. Docker image is built on Hetzner server
+4. Kubernetes manifests are applied
+5. Application is available at `https://sandata.janisrael.com`
+
+**Kubernetes Resources:**
+- Namespace: `sandata`
+- Deployment: `sandata-app` (2 replicas)
+- Service: `sandata-service`
+- Ingress: `sandata-ingress`
+- Redis: `redis` deployment and service
+- PersistentVolumeClaim: `sandata-pvc` (2Gi for SQLite database)
 
 ## Troubleshooting
 
@@ -489,4 +525,4 @@ This tool is provided for **educational and authorized testing purposes only**. 
 
 ---
 
-**Remember: Use this tool responsibly and only on systems you own or have explicit permission to test!** 🔒
+**Remember: Use this tool responsibly and only on systems you own or have explicit permission to test!**
