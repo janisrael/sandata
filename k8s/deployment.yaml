@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandata-app
+  namespace: sandata
+  labels:
+    app: sandata
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sandata
+  template:
+    metadata:
+      labels:
+        app: sandata
+        version: v1
+    spec:
+      containers:
+      - name: sandata
+        image: sandata:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+          name: http
+          protocol: TCP
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sandata-secrets
+              key: secret-key
+        - name: FLASK_ENV
+          valueFrom:
+            secretKeyRef:
+              name: sandata-secrets
+              key: flask-env
+        - name: PORT
+          valueFrom:
+            secretKeyRef:
+              name: sandata-secrets
+              key: port
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: sandata-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: sandata-secrets
+              key: redis-url
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: sandata-secrets
+              key: celery-broker-url
+        - name: CELERY_RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              name: sandata-secrets
+              key: celery-result-backend
+        volumeMounts:
+        - name: instance-data
+          mountPath: /app/instance
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: instance-data
+        persistentVolumeClaim:
+          claimName: sandata-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sandata-pvc
+  namespace: sandata
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: local-path
+
