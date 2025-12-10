@@ -97,14 +97,19 @@ def init_db(app):
     
     with app.app_context():
         try:
-            # Only create tables if they don't exist
+            # Create tables if they don't exist (create_all is idempotent)
+            # But handle the case where tables already exist due to persistent volume
             db.create_all()
         except Exception as e:
-            # If tables already exist, that's fine - just log and continue
+            # If there's an error (like table already exists), try to verify tables are accessible
             import logging
-            logging.warning(f"Database tables may already exist: {e}")
-            # Try to continue anyway - tables might be fine
-            pass
+            logging.warning(f"Database initialization warning: {e}")
+            try:
+                # Try to query a table to verify database is accessible
+                User.query.limit(1).all()
+            except Exception as verify_error:
+                # If we can't access tables, re-raise the original error
+                raise e from verify_error
         
         # Create default admin user if not exists
         admin_email = app.config.get('ADMIN_EMAIL', 'admin@example.com')
