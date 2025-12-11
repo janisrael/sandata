@@ -22,7 +22,7 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Rate Limiting
-    RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
+    RATELIMIT_STORAGE_URL = os.environ.get('RATELIMIT_STORAGE_URL') or os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
     RATELIMIT_STRATEGY = 'fixed-window'
     RATELIMIT_HEADERS_ENABLED = True
     
