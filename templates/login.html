@@ -47,7 +47,30 @@
         {% endif %}
       {% endwith %}
 
-      <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+      <!-- Demo Credentials for Portfolio -->
+      <div class="demo-credentials" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; margin-bottom: 24px; color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span class="material-icons-round" style="font-size: 24px;">admin_panel_settings</span>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600;">Demo Account (Portfolio)</h3>
+        </div>
+        <p style="margin: 0 0 12px 0; opacity: 0.9; font-size: 14px;">Use these credentials to explore the platform:</p>
+        <div style="background: rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px; font-family: 'Courier New', monospace; font-size: 14px; backdrop-filter: blur(10px);">
+          <div style="margin-bottom: 8px;">
+            <strong>Email:</strong> <span id="demo-email" style="user-select: all;">admin@example.com</span>
+            <button onclick="copyToClipboard('admin@example.com', 'demo-email')" style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 4px; padding: 4px 8px; margin-left: 8px; color: white; cursor: pointer; font-size: 12px;">Copy</button>
+          </div>
+          <div>
+            <strong>Password:</strong> <span id="demo-password" style="user-select: all;">admin123</span>
+            <button onclick="copyToClipboard('admin123', 'demo-password')" style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 4px; padding: 4px 8px; margin-left: 8px; color: white; cursor: pointer; font-size: 12px;">Copy</button>
+          </div>
+        </div>
+        <button onclick="fillDemoCredentials()" style="width: 100%; margin-top: 12px; background: white; color: #667eea; border: none; border-radius: 8px; padding: 10px; font-weight: 600; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+          <span class="material-icons-round" style="vertical-align: middle; margin-right: 4px;">auto_fill</span>
+          Auto-Fill Credentials
+        </button>
+      </div>
+
+      <form method="POST" action="{{ url_for('login') }}" class="auth-form" id="login-form">
         {{ form.hidden_tag() }}
         
         <div class="form-group">
@@ -55,7 +78,7 @@
             <span class="material-icons-round">email</span>
             Email Address
           </label>
-          {{ form.email(class="form-input", placeholder="your.email@example.com") }}
+          {{ form.email(class="form-input", placeholder="your.email@example.com", id="email-input") }}
           {% if form.email.errors %}
             <span class="error-message">{{ form.email.errors[0] }}</span>
           {% endif %}
@@ -66,7 +89,7 @@
             <span class="material-icons-round">lock</span>
             Password
           </label>
-          {{ form.password(class="form-input", placeholder="Enter your password") }}
+          {{ form.password(class="form-input", placeholder="Enter your password", id="password-input") }}
           {% if form.password.errors %}
             <span class="error-message">{{ form.password.errors[0] }}</span>
           {% endif %}
@@ -82,6 +105,26 @@
           Login
         </button>
       </form>
+
+      <script>
+        function copyToClipboard(text, elementId) {
+          navigator.clipboard.writeText(text).then(function() {
+            const element = document.getElementById(elementId);
+            const originalText = element.textContent;
+            element.textContent = 'Copied!';
+            element.style.color = '#4ade80';
+            setTimeout(function() {
+              element.textContent = originalText;
+              element.style.color = '';
+            }, 1000);
+          });
+        }
+
+        function fillDemoCredentials() {
+          document.getElementById('email-input').value = 'admin@example.com';
+          document.getElementById('password-input').value = 'admin123';
+        }
+      </script>
 
       <div class="auth-footer">
         <p>Don't have an account? <a href="{{ url_for('register') }}" class="auth-link">Register here</a></p>
